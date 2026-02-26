@@ -506,8 +506,9 @@ new class extends Component {
                         <th class="px-3 py-2 font-medium">{{ __('Date') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Odometer') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Volume') }}</th>
+                        <th class="px-3 py-2 font-medium">{{ __('Fill') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Price/Unit') }}</th>
-                        <th class="px-3 py-2 font-medium">{{ __('Efficiency') }}</th>
+                        <th class="px-3 py-2 font-medium">{{ __('Efficiency (mpg)') }}</th>
                         <th class="px-3 py-2 text-right font-medium">{{ __('Total') }}</th>
                     </tr>
                 </thead>
@@ -522,10 +523,16 @@ new class extends Component {
                             <td class="px-3 py-2">{{ $fuelLog->log_date->format('d-m-Y') }}</td>
                             <td class="px-3 py-2">{{ number_format((float) $fuelLog->odometer) }}</td>
                             <td class="px-3 py-2">{{ number_format((float) $fuelLog->volume, 3) }} {{ $this->volumeUnitLabel($fuelLog->volume_unit) }}</td>
+                            <td class="px-3 py-2">
+                                @if ($fuelLog->full_tank)
+                                    <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{{ __('Full') }}</span>
+                                @else
+                                    <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{{ __('Partial') }}</span>
+                                @endif
+                            </td>
                             <td class="px-3 py-2">{{ $this->currencySymbol() }}{{ number_format((float) $fuelLog->price_per_unit, 3) }}/{{ $this->volumeUnitLabel($fuelLog->volume_unit) }}</td>
                             <td class="px-3 py-2">
                                 {{ $fuelLog->calculated_efficiency !== null ? number_format((float) $fuelLog->calculated_efficiency, 3) : __('N/A') }}
-                                <span class="text-zinc-500 dark:text-zinc-400">({{ $this->efficiencyLabel() }})</span>
                             </td>
                             <td class="px-3 py-2 text-right">{{ $this->formatCurrency($fuelLog->ledgerEntry?->amount) }}</td>
                         </tr>
