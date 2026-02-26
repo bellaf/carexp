@@ -195,3 +195,63 @@ test('car current odometer syncs from most recent fuel log on create update and 
 
     expect($carA->refresh()->current_odometer)->toBe(12500);
 });
+
+test('efficiency only calculates when current and immediately previous entries are full tank', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+        'volume_unit' => 'gallons',
+    ]);
+    $car = Car::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.log_date', now()->subDays(3)->toDateString())
+        ->set('form.odometer', '10000')
+        ->set('form.volume', '10.000')
+        ->set('form.total_cost', '40.00')
+        ->set('form.price_per_unit', '')
+        ->set('form.full_tank', true)
+        ->call('saveFuelLog')
+        ->assertHasNoErrors();
+
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.log_date', now()->subDays(2)->toDateString())
+        ->set('form.odometer', '10100')
+        ->set('form.volume', '5.000')
+        ->set('form.total_cost', '22.00')
+        ->set('form.price_per_unit', '')
+        ->set('form.full_tank', false)
+        ->call('saveFuelLog')
+        ->assertHasNoErrors();
+
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.log_date', now()->subDay()->toDateString())
+        ->set('form.odometer', '10200')
+        ->set('form.volume', '10.000')
+        ->set('form.total_cost', '44.00')
+        ->set('form.price_per_unit', '')
+        ->set('form.full_tank', true)
+        ->call('saveFuelLog')
+        ->assertHasNoErrors();
+
+    $latestLog = FuelLog::query()->where('user_id', $user->id)->where('odometer', 10200)->firstOrFail();
+    expect($latestLog->calculated_efficiency)->toBeNull();
+
+    $middleLog = FuelLog::query()->where('user_id', $user->id)->where('odometer', 10100)->firstOrFail();
+
+    Livewire::test('pages::fuel.index')
+        ->call('editFuelLog', $middleLog->id)
+        ->set('form.full_tank', true)
+        ->call('saveFuelLog')
+        ->assertHasNoErrors();
+
+    expect((float) $middleLog->refresh()->calculated_efficiency)->toBe(20.0);
+    expect((float) $latestLog->refresh()->calculated_efficiency)->toBe(10.0);
+});

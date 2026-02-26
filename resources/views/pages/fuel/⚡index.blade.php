@@ -80,9 +80,11 @@ new class extends Component {
 
             $this->syncFuelLedgerEntry($fuelLog, $amount);
             $this->syncCarCurrentOdometer((int) $fuelLog->car_id);
+            $this->recalculateFuelEfficienciesForCar((int) $fuelLog->car_id);
 
             if ($previousCarId !== null && $previousCarId !== (int) $fuelLog->car_id) {
                 $this->syncCarCurrentOdometer($previousCarId);
+                $this->recalculateFuelEfficienciesForCar($previousCarId);
             }
         });
 
@@ -102,6 +104,7 @@ new class extends Component {
 
             $fuelLog->delete();
             $this->syncCarCurrentOdometer($carId);
+            $this->recalculateFuelEfficienciesForCar($carId);
         });
     }
 
@@ -203,7 +206,10 @@ new class extends Component {
     #[Computed]
     public function averageEfficiency(): ?float
     {
-        $average = $this->fuelLogs->whereNotNull('calculated_efficiency')->avg('calculated_efficiency');
+        $average = $this->fuelLogs
+            ->where('full_tank', true)
+            ->whereNotNull('calculated_efficiency')
+            ->avg('calculated_efficiency');
 
         return $average !== null ? round((float) $average, 3) : null;
     }
@@ -265,34 +271,6 @@ new class extends Component {
             ? $form['volume_unit']
             : $this->preferredVolumeUnit();
 
-        if ($form['full_tank']) {
-            $previousFullTankLog = Auth::user()->fuelLogs()
-                ->where('car_id', (int) $form['car_id'])
-                ->where('full_tank', true)
-                ->when($this->editingFuelLogId, fn ($query) => $query->where('id', '!=', $this->editingFuelLogId))
-                ->where('odometer', '<', (int) $form['odometer'])
-                ->orderByDesc('odometer')
-                ->first();
-
-            $distance = $previousFullTankLog ? ((int) $form['odometer'] - (int) $previousFullTankLog->odometer) : 0;
-
-            if (Auth::user()->measurement_system === 'metric') {
-                $volumeForEfficiency = $volumeUnit === 'liters'
-                    ? (float) $form['volume']
-                    : ((float) $form['volume'] * 3.785411784);
-            } else {
-                $volumeForEfficiency = $volumeUnit === 'gallons'
-                    ? (float) $form['volume']
-                    : ((float) $form['volume'] * 0.2641720524);
-            }
-
-            $efficiency = $distance > 0
-                ? round($distance / $volumeForEfficiency, 3)
-                : null;
-        } else {
-            $efficiency = null;
-        }
-
         return [
             'attributes' => [
                 'car_id' => (int) $form['car_id'],
@@ -302,10 +280,55 @@ new class extends Component {
                 'volume_unit' => $volumeUnit,
                 'price_per_unit' => $pricePerUnit,
                 'full_tank' => (bool) $form['full_tank'],
-                'calculated_efficiency' => $efficiency,
+                'calculated_efficiency' => null,
             ],
             'amount' => $amount,
         ];
+    }
+
+    protected function recalculateFuelEfficienciesForCar(int $carId): void
+    {
+        $fuelLogs = Auth::user()->fuelLogs()
+            ->where('car_id', $carId)
+            ->orderBy('odometer')
+            ->orderBy('id')
+            ->get();
+
+        $previousLog = null;
+
+        foreach ($fuelLogs as $fuelLog) {
+            $efficiency = null;
+
+            if ($fuelLog->full_tank && $previousLog !== null && $previousLog->full_tank) {
+                $distance = (int) $fuelLog->odometer - (int) $previousLog->odometer;
+                $volumeForEfficiency = $this->volumeForEfficiency((float) $fuelLog->volume, (string) $fuelLog->volume_unit);
+
+                if ($distance > 0 && $volumeForEfficiency > 0) {
+                    $efficiency = round($distance / $volumeForEfficiency, 3);
+                }
+            }
+
+            $current = $fuelLog->calculated_efficiency !== null ? (float) $fuelLog->calculated_efficiency : null;
+
+            if ($current !== $efficiency) {
+                $fuelLog->update(['calculated_efficiency' => $efficiency]);
+            }
+
+            $previousLog = $fuelLog;
+        }
+    }
+
+    protected function volumeForEfficiency(float $volume, string $volumeUnit): float
+    {
+        if (Auth::user()->measurement_system === 'metric') {
+            return $volumeUnit === 'liters'
+                ? $volume
+                : ($volume * 3.785411784);
+        }
+
+        return $volumeUnit === 'gallons'
+            ? $volume
+            : ($volume * 0.2641720524);
     }
 
     protected function syncFuelLedgerEntry(FuelLog $fuelLog, float $amount): void
