@@ -19,7 +19,10 @@ class QuickAction extends Model
         'car_id',
         'expense_category_id',
         'name',
+        'entry_target',
         'amount',
+        'fuel_volume',
+        'fuel_full_tank',
         'vendor',
         'notes',
         'tags',
@@ -34,6 +37,8 @@ class QuickAction extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'fuel_volume' => 'decimal:3',
+            'fuel_full_tank' => 'boolean',
             'tags' => 'array',
             'is_active' => 'boolean',
         ];

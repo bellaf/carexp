@@ -72,12 +72,19 @@
                             @php
                                 $quickActionPayload = [
                                     'name' => $quickAction->name,
+                                    'entry_target' => $quickAction->entry_target,
                                     'amount' => (float) $quickAction->amount,
                                     'amount_display' => \App\Support\CurrencyFormatter::format($quickAction->amount, $currencyCode),
                                     'requires_amount' => (float) $quickAction->amount <= 0,
                                     'amount_input' => (float) $quickAction->amount > 0 ? (string) $quickAction->amount : '',
+                                    'fuel_volume' => $quickAction->fuel_volume !== null ? (float) $quickAction->fuel_volume : null,
+                                    'fuel_volume_display' => $quickAction->fuel_volume !== null ? number_format((float) $quickAction->fuel_volume, 3).' '.(auth()->user()->volume_unit === 'liters' ? 'L' : 'gal') : __('N/A'),
+                                    'requires_fuel_volume' => $quickAction->entry_target === 'fuel_log' && ((float) ($quickAction->fuel_volume ?? 0) <= 0),
+                                    'fuel_volume_input' => $quickAction->fuel_volume !== null && (float) $quickAction->fuel_volume > 0 ? (string) $quickAction->fuel_volume : '',
+                                    'fuel_full_tank' => (bool) $quickAction->fuel_full_tank,
+                                    'odometer_input' => (string) ($quickAction->car?->current_odometer ?? $currentCar?->current_odometer ?? 0),
+                                    'requires_user_input' => $quickAction->entry_target === 'fuel_log' || (float) $quickAction->amount <= 0 || ($quickAction->entry_target === 'fuel_log' && ((float) ($quickAction->fuel_volume ?? 0) <= 0)),
                                     'vendor' => $quickAction->vendor ?? __('N/A'),
-                                    'category' => $quickAction->expenseCategory?->name ?? __('N/A'),
                                     'car' => $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default Car'),
                                     'notes' => $quickAction->notes ?: __('N/A'),
                                     'run_url' => route('dashboard.quick-actions.run', $quickAction),
@@ -305,9 +312,17 @@
                         <flux:button variant="ghost" x-on:click="showQuickActionModal = false">{{ __('Close') }}</flux:button>
                     </div>
 
-                    <div class="mt-4 grid gap-2 text-sm">
+                    <div class="mt-4 grid gap-2 text-sm" x-show="!selectedQuickAction?.requires_user_input" x-cloak>
+                        <div><strong>{{ __('Target') }}:</strong> <span x-text="selectedQuickAction?.entry_target === 'fuel_log' ? '{{ __('Fuel Log') }}' : '{{ __('Expense') }}'"></span></div>
                         <div><strong>{{ __('Amount') }}:</strong> <span x-text="selectedQuickAction?.amount_display"></span></div>
-                        <div><strong>{{ __('Category') }}:</strong> <span x-text="selectedQuickAction?.category"></span></div>
+                        <div x-show="selectedQuickAction?.entry_target === 'fuel_log'">
+                            <strong>{{ __('Fuel Volume') }}:</strong>
+                            <span x-text="selectedQuickAction?.fuel_volume_display ?? '{{ __('N/A') }}'"></span>
+                        </div>
+                        <div x-show="selectedQuickAction?.entry_target === 'fuel_log'">
+                            <strong>{{ __('Full Tank') }}:</strong>
+                            <span x-text="selectedQuickAction?.fuel_full_tank ? '{{ __('Yes') }}' : '{{ __('No') }}'"></span>
+                        </div>
                         <div><strong>{{ __('Car') }}:</strong> <span x-text="selectedQuickAction?.car"></span></div>
                         <div><strong>{{ __('Vendor') }}:</strong> <span x-text="selectedQuickAction?.vendor"></span></div>
                         <div><strong>{{ __('Notes') }}:</strong> <span x-text="selectedQuickAction?.notes"></span></div>
@@ -316,6 +331,17 @@
                     <form class="mt-4 flex items-center justify-between gap-3" method="POST" x-bind:action="selectedQuickAction?.run_url">
                         @csrf
                         <div class="flex flex-col gap-3">
+                            <div x-show="selectedQuickAction?.entry_target === 'fuel_log'" x-cloak>
+                                <flux:input
+                                    :label="__('Odometer')"
+                                    type="number"
+                                    name="odometer"
+                                    min="0"
+                                    step="1"
+                                    x-model="selectedQuickAction.odometer_input"
+                                    required
+                                />
+                            </div>
                             <div x-show="selectedQuickAction?.requires_amount" x-cloak>
                                 <flux:input
                                     :label="__('Enter Amount')"
@@ -326,6 +352,24 @@
                                     x-model="selectedQuickAction.amount_input"
                                     x-bind:required="selectedQuickAction?.requires_amount"
                                 />
+                            </div>
+                            <div x-show="selectedQuickAction?.requires_fuel_volume" x-cloak>
+                                <flux:input
+                                    :label="__('Enter Fuel Volume')"
+                                    type="number"
+                                    name="fuel_volume"
+                                    min="0.001"
+                                    step="0.001"
+                                    x-model="selectedQuickAction.fuel_volume_input"
+                                    x-bind:required="selectedQuickAction?.requires_fuel_volume"
+                                />
+                            </div>
+                            <div x-show="selectedQuickAction?.entry_target === 'fuel_log'" x-cloak>
+                                <input type="hidden" name="full_tank" value="0">
+                                <label class="inline-flex items-center gap-2 text-sm">
+                                    <input type="checkbox" name="full_tank" value="1" x-model="selectedQuickAction.fuel_full_tank">
+                                    <span>{{ __('Full Tank') }}</span>
+                                </label>
                             </div>
                             <div class="flex items-center gap-2">
                                 <flux:button type="submit" variant="primary">{{ __('Confirm & Post') }}</flux:button>

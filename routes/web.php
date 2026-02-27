@@ -2,6 +2,7 @@
 
 use App\Models\Account;
 use App\Models\Expense;
+use App\Models\FuelLog;
 use App\Models\MaintenanceRecord;
 use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
@@ -258,6 +259,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $user = $request->user();
         $validated = $request->validate([
             'amount' => ['nullable', 'numeric', 'min:0.01'],
+            'fuel_volume' => ['nullable', 'numeric', 'min:0.001'],
+            'odometer' => ['nullable', 'integer', 'min:0'],
+            'full_tank' => ['nullable', 'boolean'],
         ]);
         $configuredAmount = (float) $quickAction->amount;
         $amountToPost = $configuredAmount > 0
@@ -278,69 +282,117 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route('dashboard')->with('error', __('No active car is available for this quick action.'));
         }
 
-        $accountKey = match ($quickAction->expenseCategory?->key) {
-            'fuel' => 'fuel_expense',
-            'maintenance' => 'maintenance_expense',
-            'repairs' => 'repairs_expense',
-            'tires' => 'tires_expense',
-            'insurance' => 'insurance_expense',
-            'registration_dmv' => 'tax_registration_expense',
-            'parking' => 'parking_expense',
-            'tolls' => 'tolls_expense',
-            default => 'other_expense',
-        };
+        $accountKey = $quickAction->entry_target === 'fuel_log'
+            ? 'fuel_expense'
+            : 'other_expense';
+        $accountName = $quickAction->entry_target === 'fuel_log'
+            ? 'Fuel'
+            : 'Other Expense';
 
-        $accountName = match ($accountKey) {
-            'fuel_expense' => 'Fuel',
-            'maintenance_expense' => 'Maintenance',
-            'repairs_expense' => 'Repairs',
-            'tires_expense' => 'Tires',
-            'insurance_expense' => 'Insurance',
-            'tax_registration_expense' => 'Tax/Registration',
-            'parking_expense' => 'Parking',
-            'tolls_expense' => 'Tolls',
-            default => 'Other Expense',
-        };
+        if ($quickAction->entry_target === 'fuel_log') {
+            $configuredFuelVolume = $quickAction->fuel_volume !== null ? (float) $quickAction->fuel_volume : null;
+            $fuelVolumeToPost = $configuredFuelVolume !== null && $configuredFuelVolume > 0
+                ? $configuredFuelVolume
+                : (isset($validated['fuel_volume']) ? (float) $validated['fuel_volume'] : null);
 
-        DB::transaction(function () use ($user, $car, $quickAction, $accountKey, $accountName, $amountToPost): void {
-            $expense = Expense::query()->create([
-                'user_id' => $user->id,
-                'car_id' => $car->id,
-                'expense_category_id' => $quickAction->expense_category_id,
-                'ledger_entry_id' => null,
-                'amount' => $amountToPost,
-                'expense_date' => now()->toDateString(),
-                'odometer' => $car->current_odometer,
-                'vendor' => $quickAction->vendor,
-                'notes' => $quickAction->notes,
-                'tags' => $quickAction->tags,
-            ]);
+            if ($fuelVolumeToPost === null) {
+                return redirect()
+                    ->route('dashboard')
+                    ->withErrors(['quick_action_fuel_volume' => __('Please enter fuel volume for this quick action.')]);
+            }
 
-            $account = Account::query()->firstOrCreate(
-                ['key' => $accountKey],
-                [
-                    'user_id' => null,
-                    'name' => $accountName,
-                    'group' => 'expense',
-                    'is_system' => true,
-                    'is_active' => true,
-                ],
-            );
+            $odometerToPost = isset($validated['odometer'])
+                ? (int) $validated['odometer']
+                : (int) ($car->current_odometer ?? 0);
+            $fullTankToPost = array_key_exists('full_tank', $validated)
+                ? (bool) $validated['full_tank']
+                : (bool) $quickAction->fuel_full_tank;
 
-            $ledgerEntry = $user->ledgerEntries()->create([
-                'car_id' => $car->id,
-                'account_id' => $account->id,
-                'entry_date' => now()->toDateString(),
-                'entry_type' => 'expense',
-                'amount' => $amountToPost,
-                'source_type' => 'expense',
-                'source_id' => $expense->id,
-                'reference' => $quickAction->vendor,
-                'notes' => $quickAction->notes,
-            ]);
+            DB::transaction(function () use ($user, $car, $quickAction, $amountToPost, $fuelVolumeToPost, $odometerToPost, $fullTankToPost): void {
+                $fuelVolumeUnit = in_array($user->volume_unit, ['gallons', 'liters'], true)
+                    ? $user->volume_unit
+                    : ($user->measurement_system === 'metric' ? 'liters' : 'gallons');
 
-            $expense->update(['ledger_entry_id' => $ledgerEntry->id]);
-        });
+                $fuelLog = FuelLog::query()->create([
+                    'user_id' => $user->id,
+                    'car_id' => $car->id,
+                    'ledger_entry_id' => null,
+                    'log_date' => now()->toDateString(),
+                    'odometer' => $odometerToPost,
+                    'volume' => $fuelVolumeToPost,
+                    'volume_unit' => $fuelVolumeUnit,
+                    'price_per_unit' => round($amountToPost / $fuelVolumeToPost, 3),
+                    'full_tank' => $fullTankToPost,
+                    'calculated_efficiency' => null,
+                ]);
+
+                $account = Account::query()->firstOrCreate(
+                    ['key' => 'fuel_expense'],
+                    [
+                        'user_id' => null,
+                        'name' => 'Fuel',
+                        'group' => 'expense',
+                        'is_system' => true,
+                        'is_active' => true,
+                    ],
+                );
+
+                $ledgerEntry = $user->ledgerEntries()->create([
+                    'car_id' => $car->id,
+                    'account_id' => $account->id,
+                    'entry_date' => now()->toDateString(),
+                    'entry_type' => 'expense',
+                    'amount' => $amountToPost,
+                    'source_type' => 'fuel_log',
+                    'source_id' => $fuelLog->id,
+                    'reference' => 'Fuel Log',
+                    'notes' => $quickAction->notes,
+                ]);
+
+                $fuelLog->update(['ledger_entry_id' => $ledgerEntry->id]);
+                $car->update(['current_odometer' => max((int) ($car->current_odometer ?? 0), $odometerToPost)]);
+            });
+        } else {
+            DB::transaction(function () use ($user, $car, $quickAction, $accountKey, $accountName, $amountToPost): void {
+                $expense = Expense::query()->create([
+                    'user_id' => $user->id,
+                    'car_id' => $car->id,
+                    'expense_category_id' => $quickAction->expense_category_id,
+                    'ledger_entry_id' => null,
+                    'amount' => $amountToPost,
+                    'expense_date' => now()->toDateString(),
+                    'odometer' => $car->current_odometer,
+                    'vendor' => $quickAction->vendor,
+                    'notes' => $quickAction->notes,
+                    'tags' => $quickAction->tags,
+                ]);
+
+                $account = Account::query()->firstOrCreate(
+                    ['key' => $accountKey],
+                    [
+                        'user_id' => null,
+                        'name' => $accountName,
+                        'group' => 'expense',
+                        'is_system' => true,
+                        'is_active' => true,
+                    ],
+                );
+
+                $ledgerEntry = $user->ledgerEntries()->create([
+                    'car_id' => $car->id,
+                    'account_id' => $account->id,
+                    'entry_date' => now()->toDateString(),
+                    'entry_type' => 'expense',
+                    'amount' => $amountToPost,
+                    'source_type' => 'expense',
+                    'source_id' => $expense->id,
+                    'reference' => $quickAction->vendor,
+                    'notes' => $quickAction->notes,
+                ]);
+
+                $expense->update(['ledger_entry_id' => $ledgerEntry->id]);
+            });
+        }
 
         return redirect()->route('dashboard');
     })->name('dashboard.quick-actions.run');
