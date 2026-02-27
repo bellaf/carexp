@@ -420,7 +420,7 @@ new class extends Component {
         </flux:card>
     @endif
 
-    <flux:modal name="manage-expense-categories" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[42rem] dark:border-zinc-600 dark:ring-white/10">
+    <flux:modal :closable="false" name="manage-expense-categories" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[42rem] dark:border-zinc-600 dark:ring-white/10">
         <div class="space-y-5">
             <div>
                 <flux:heading>{{ __('Manage Expense Categories') }}</flux:heading>
@@ -459,7 +459,7 @@ new class extends Component {
         </div>
     </flux:modal>
 
-    <flux:modal wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
+    <flux:modal :closable="false" wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
         <div class="space-y-5">
             <div class="flex items-start justify-between gap-3">
                 <div>

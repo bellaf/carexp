@@ -233,7 +233,7 @@ new class extends Component {
         </div>
     </x-pages::settings.layout>
 
-    <flux:modal
+    <flux:modal :closable="false"
         name="two-factor-setup-modal"
         class="max-w-md border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:min-w-md dark:border-zinc-600 dark:ring-white/10"
         @close="closeModal"

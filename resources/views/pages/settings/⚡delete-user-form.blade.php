@@ -37,7 +37,7 @@ new class extends Component {
         </flux:button>
     </flux:modal.trigger>
 
-    <flux:modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg border border-zinc-300 shadow-2xl ring-1 ring-black/10 dark:border-zinc-600 dark:ring-white/10">
+    <flux:modal :closable="false" name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg border border-zinc-300 shadow-2xl ring-1 ring-black/10 dark:border-zinc-600 dark:ring-white/10">
         <form method="POST" wire:submit="deleteUser" class="space-y-6">
             <div>
                 <flux:heading size="lg">{{ __('Are you sure you want to delete your account?') }}</flux:heading>

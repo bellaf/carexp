@@ -203,7 +203,7 @@ new class extends Component {
         <flux:button variant="primary" wire:click="startCreating">{{ __('Add Quick Action') }}</flux:button>
     </div>
 
-    <flux:modal wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
+    <flux:modal :closable="false" wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
         <div class="space-y-5">
             <div class="flex items-start justify-between gap-3">
                 <div>
