@@ -17,20 +17,20 @@ class MaintenanceRecordFactory extends Factory
      */
     public function definition(): array
     {
-        $serviceDate = fake()->dateTimeBetween('-3 years', 'now');
+        $serviceDate = $this->faker->dateTimeBetween('-3 years', 'now');
 
         return [
             'car_id' => Car::factory(),
             'user_id' => static function (array $attributes): int {
                 return Car::query()->findOrFail($attributes['car_id'])->user_id;
             },
-            'service_type' => fake()->randomElement(['oil_change', 'tire_rotation', 'brake_service']),
-            'provider' => fake()->optional()->company(),
+            'service_type' => $this->faker->randomElement(['oil_change', 'tire_rotation', 'brake_service']),
+            'provider' => $this->faker->optional()->company(),
             'service_date' => $serviceDate->format('Y-m-d'),
-            'odometer' => fake()->optional()->numberBetween(0, 220000),
-            'notes' => fake()->optional()->sentence(),
-            'next_due_date' => fake()->optional()->dateTimeBetween($serviceDate, '+2 years')?->format('Y-m-d'),
-            'next_due_odometer' => fake()->optional()->numberBetween(1000, 230000),
+            'odometer' => $this->faker->optional()->numberBetween(0, 220000),
+            'notes' => $this->faker->optional()->sentence(),
+            'next_due_date' => $this->faker->optional()->dateTimeBetween($serviceDate, '+2 years')?->format('Y-m-d'),
+            'next_due_odometer' => $this->faker->optional()->numberBetween(1000, 230000),
         ];
     }
 }

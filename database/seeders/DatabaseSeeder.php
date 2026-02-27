@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,9 +17,16 @@ class DatabaseSeeder extends Seeder
         $this->call(AccountSeeder::class);
         $this->call(ExpenseCategorySeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
+        User::query()->firstOrCreate([
             'email' => 'test@example.com',
+        ], [
+            'name' => 'Test User',
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+            'preferred_currency' => 'USD',
+            'measurement_system' => 'imperial',
+            'volume_unit' => 'gallons',
+            'timezone' => 'UTC',
         ]);
     }
 }

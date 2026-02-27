@@ -24,12 +24,12 @@ class ExpenseFactory extends Factory
                 return Car::query()->findOrFail($attributes['car_id'])->user_id;
             },
             'expense_category_id' => ExpenseCategory::factory(),
-            'amount' => fake()->randomFloat(2, 5, 1200),
-            'expense_date' => fake()->date(),
-            'odometer' => fake()->optional()->numberBetween(0, 220000),
-            'vendor' => fake()->optional()->company(),
-            'notes' => fake()->optional()->sentence(),
-            'tags' => fake()->optional()->randomElements(['business', 'personal', 'reimbursable'], fake()->numberBetween(1, 2)),
+            'amount' => $this->faker->randomFloat(2, 5, 1200),
+            'expense_date' => $this->faker->date(),
+            'odometer' => $this->faker->optional()->numberBetween(0, 220000),
+            'vendor' => $this->faker->optional()->company(),
+            'notes' => $this->faker->optional()->sentence(),
+            'tags' => $this->faker->optional()->randomElements(['business', 'personal', 'reimbursable'], $this->faker->numberBetween(1, 2)),
         ];
     }
 }

@@ -16,12 +16,12 @@ class AccountFactory extends Factory
      */
     public function definition(): array
     {
-        $group = fake()->randomElement(['expense', 'income']);
+        $group = $this->faker->randomElement(['expense', 'income']);
 
         return [
             'user_id' => null,
-            'name' => fake()->words(2, true),
-            'key' => fake()->unique()->slug(),
+            'name' => $this->faker->words(2, true),
+            'key' => $this->faker->unique()->slug(),
             'group' => $group,
             'is_system' => false,
             'is_active' => true,

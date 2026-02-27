@@ -23,10 +23,10 @@ class ReimbursementFactory extends Factory
                 return Car::query()->findOrFail($attributes['car_id'])->user_id;
             },
             'ledger_entry_id' => null,
-            'reimbursed_date' => fake()->date(),
-            'source' => fake()->optional()->randomElement(['Employer', 'Client Reimbursement']),
-            'reference' => fake()->optional()->bothify('REF-####'),
-            'notes' => fake()->optional()->sentence(),
+            'reimbursed_date' => $this->faker->date(),
+            'source' => $this->faker->optional()->randomElement(['Employer', 'Client Reimbursement']),
+            'reference' => $this->faker->optional()->bothify('REF-####'),
+            'notes' => $this->faker->optional()->sentence(),
         ];
     }
 }

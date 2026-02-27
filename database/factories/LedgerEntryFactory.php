@@ -18,7 +18,7 @@ class LedgerEntryFactory extends Factory
      */
     public function definition(): array
     {
-        $entryType = fake()->randomElement(['expense', 'income']);
+        $entryType = $this->faker->randomElement(['expense', 'income']);
 
         return [
             'car_id' => Car::factory(),
@@ -28,13 +28,13 @@ class LedgerEntryFactory extends Factory
             'account_id' => Account::factory()->state([
                 'group' => $entryType,
             ]),
-            'entry_date' => fake()->date(),
+            'entry_date' => $this->faker->date(),
             'entry_type' => $entryType,
-            'amount' => fake()->randomFloat(2, 5, 2000),
-            'source_type' => fake()->optional()->randomElement(['manual', 'fuel_log', 'maintenance_record', 'reimbursement']),
-            'source_id' => fake()->optional()->numberBetween(1, 99999),
-            'reference' => fake()->optional()->bothify('REF-####'),
-            'notes' => fake()->optional()->sentence(),
+            'amount' => $this->faker->randomFloat(2, 5, 2000),
+            'source_type' => $this->faker->optional()->randomElement(['manual', 'fuel_log', 'maintenance_record', 'reimbursement']),
+            'source_id' => $this->faker->optional()->numberBetween(1, 99999),
+            'reference' => $this->faker->optional()->bothify('REF-####'),
+            'notes' => $this->faker->optional()->sentence(),
         ];
     }
 }

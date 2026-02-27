@@ -18,8 +18,8 @@ class RecurringTransactionFactory extends Factory
      */
     public function definition(): array
     {
-        $entryType = fake()->randomElement(['expense', 'income']);
-        $cadence = fake()->randomElement(['monthly', 'quarterly', 'yearly']);
+        $entryType = $this->faker->randomElement(['expense', 'income']);
+        $cadence = $this->faker->randomElement(['monthly', 'quarterly', 'yearly']);
 
         return [
             'car_id' => Car::factory(),
@@ -30,12 +30,12 @@ class RecurringTransactionFactory extends Factory
                 'group' => $entryType,
             ]),
             'entry_type' => $entryType,
-            'amount' => fake()->randomFloat(2, 10, 1000),
+            'amount' => $this->faker->randomFloat(2, 10, 1000),
             'cadence' => $cadence,
-            'next_entry_date' => fake()->dateTimeBetween('-2 months', '+1 month')->format('Y-m-d'),
-            'end_date' => fake()->optional()->dateTimeBetween('+2 months', '+2 years')?->format('Y-m-d'),
-            'reference' => fake()->optional()->words(3, true),
-            'notes' => fake()->optional()->sentence(),
+            'next_entry_date' => $this->faker->dateTimeBetween('-2 months', '+1 month')->format('Y-m-d'),
+            'end_date' => $this->faker->optional()->dateTimeBetween('+2 months', '+2 years')?->format('Y-m-d'),
+            'reference' => $this->faker->optional()->words(3, true),
+            'notes' => $this->faker->optional()->sentence(),
             'is_active' => true,
             'last_generated_at' => null,
         ];

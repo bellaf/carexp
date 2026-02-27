@@ -16,7 +16,7 @@ class ExpenseCategoryFactory extends Factory
      */
     public function definition(): array
     {
-        $name = fake()->unique()->words(2, true);
+        $name = $this->faker->unique()->words(2, true);
 
         return [
             'key' => str($name)->snake()->toString(),

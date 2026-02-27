@@ -27,9 +27,9 @@ class ReimbursementAllocationFactory extends Factory
             'expense_ledger_entry_id' => LedgerEntry::factory()->state([
                 'entry_type' => 'expense',
             ]),
-            'amount_allocated' => fake()->randomFloat(2, 1, 500),
+            'amount_allocated' => $this->faker->randomFloat(2, 1, 500),
             'allocated_at' => now(),
-            'notes' => fake()->optional()->sentence(),
+            'notes' => $this->faker->optional()->sentence(),
         ];
     }
 }
