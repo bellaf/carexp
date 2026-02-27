@@ -250,11 +250,11 @@
         <div
             x-show="showServiceModal && selectedService"
             x-transition.opacity
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
             x-on:click.self="showServiceModal = false"
             x-on:keydown.escape.window="showServiceModal = false"
         >
-            <div class="w-full max-w-xl rounded-xl bg-white p-5 shadow-xl dark:bg-zinc-900">
+            <div class="w-full max-w-xl rounded-xl border border-zinc-300 bg-white p-5 shadow-2xl ring-1 ring-black/10 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10">
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <flux:heading>{{ __('Service Reminder') }}</flux:heading>
@@ -293,11 +293,11 @@
         <div
             x-show="showRecurringModal && selectedRecurring"
             x-transition.opacity
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
             x-on:click.self="showRecurringModal = false"
             x-on:keydown.escape.window="showRecurringModal = false"
         >
-            <div class="w-full max-w-xl rounded-xl bg-white p-5 shadow-xl dark:bg-zinc-900">
+            <div class="w-full max-w-xl rounded-xl border border-zinc-300 bg-white p-5 shadow-2xl ring-1 ring-black/10 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10">
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <flux:heading>{{ __('Recurring Reminder') }}</flux:heading>
@@ -445,11 +445,11 @@
                 <div
                     x-show="showEntryModal"
                     x-transition.opacity
-                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
                     x-on:click.self="showEntryModal = false"
                     x-on:keydown.escape.window="showEntryModal = false"
                 >
-                    <div class="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl dark:bg-zinc-900">
+                    <div class="w-full max-w-lg rounded-xl border border-zinc-300 bg-white p-5 shadow-2xl ring-1 ring-black/10 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <flux:heading>{{ __('Transaction Summary') }}</flux:heading>

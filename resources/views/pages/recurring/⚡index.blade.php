@@ -59,7 +59,7 @@ new class extends Component {
         ];
 
         $this->showDetailsModal = true;
-        $this->isModalEditing = false;
+        $this->isModalEditing = true;
         $this->confirmingDelete = false;
     }
 
@@ -82,8 +82,7 @@ new class extends Component {
         }
 
         if ($isFromDetailsModal) {
-            $this->isModalEditing = false;
-            $this->confirmingDelete = false;
+            $this->closeDetailsModal();
         } else {
             $this->cancelForm();
         }
@@ -436,8 +435,8 @@ new class extends Component {
     @endif
 
     @if ($showDetailsModal && $editingRecurringId !== null)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div class="w-full max-w-2xl rounded-xl bg-white p-5 shadow-xl dark:bg-zinc-900">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
+            <div class="w-full max-w-2xl rounded-xl border border-zinc-300 bg-white p-5 shadow-2xl ring-1 ring-black/10 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10">
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <flux:heading>{{ __('Recurring Schedule') }}</flux:heading>

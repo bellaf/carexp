@@ -355,7 +355,7 @@ new class extends Component {
         <flux:text>{{ __('Due Soon') }}: <strong>{{ $this->reminderStats['due_soon'] }}</strong></flux:text>
     </flux:card>
 
-    <flux:modal wire:model="showForm" class="md:w-[48rem]">
+    <flux:modal wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
         <div class="space-y-5">
             <div>
                 <flux:heading>{{ $editingMaintenanceId ? __('Edit Maintenance') : __('Add Maintenance') }}</flux:heading>
