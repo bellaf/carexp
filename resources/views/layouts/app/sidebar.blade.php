@@ -24,6 +24,9 @@
                     <flux:sidebar.item icon="calendar-days" :href="route('recurring.index')" :current="request()->routeIs('recurring.*')" wire:navigate>
                         {{ __('Recurring') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="bolt" :href="route('quick-actions.index')" :current="request()->routeIs('quick-actions.*')" wire:navigate>
+                        {{ __('Quick Actions') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="beaker" :href="route('fuel.index')" :current="request()->routeIs('fuel.*')" wire:navigate>
                         {{ __('Fuel Logs') }}
                     </flux:sidebar.item>

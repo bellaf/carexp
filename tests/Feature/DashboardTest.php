@@ -2,8 +2,10 @@
 
 use App\Models\Account;
 use App\Models\Car;
+use App\Models\ExpenseCategory;
 use App\Models\LedgerEntry;
 use App\Models\MaintenanceRecord;
+use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -416,4 +418,33 @@ test('dashboard maintenance and recurring modal actions can update and delete re
 
     $this->assertDatabaseMissing('maintenance_records', ['id' => $maintenance->id]);
     $this->assertDatabaseMissing('recurring_transactions', ['id' => $recurring->id]);
+});
+
+test('dashboard quick actions include confirmation modal content', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'is_default' => true,
+    ]);
+    $category = ExpenseCategory::factory()->create([
+        'key' => 'tolls',
+        'name' => 'Tolls',
+    ]);
+
+    QuickAction::factory()->for($user)->create([
+        'car_id' => $car->id,
+        'expense_category_id' => $category->id,
+        'name' => 'Dartford Toll Single',
+        'amount' => 2.50,
+        'vendor' => 'Dartford Crossing',
+        'notes' => 'Northbound only',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Quick Actions')
+        ->assertSee('Dartford Toll Single')
+        ->assertSee('Run Quick Action')
+        ->assertSeeText('Confirm & Post');
 });

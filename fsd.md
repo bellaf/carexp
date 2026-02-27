@@ -115,6 +115,19 @@ Primary outcomes:
   - Filters: transaction type + period
   - Auto-apply on change (no apply/clear buttons)
 
+### 9. Quick actions
+- Purpose:
+  - User-defined one-click expense templates for frequent transactions (for example tolls, parking)
+- Definition fields:
+  - name, category, optional car, optional amount, vendor, notes, tags, active flag, sort order
+- Dashboard behavior:
+  - Up to 4 active quick actions are shown
+  - If no quick actions are defined, quick action buttons are hidden
+  - Clicking a quick action opens a confirmation modal summary before posting
+  - If definition amount is `0` or empty, modal requires entry of amount before confirm/post
+- Posting behavior:
+  - Creates an `expenses` row and matching `ledger_entries` expense row
+
 ## UI/UX Conventions (Current)
 - Date display standard in app tables/views: `dd-mm-yyyy`
 - List views use simplified sheet-style tables
@@ -123,11 +136,27 @@ Primary outcomes:
   - Constrained select widths (not full-card stretch on desktop)
 - Row click behavior:
   - Expenses, Fuel, Reimbursements, Recurring: click row to open modal edit
+  - Quick Actions list: click row to open modal edit
   - Dashboard service/recurring due rows: click row to open modal edit/delete
 - Modal conventions:
   - Close control in top-right
   - Save/edit actions left-aligned in footer area
   - Delete action separated on right with confirmation where destructive
+
+## Default UI Standard (Future Features)
+This standard is now the default expectation for all new list-style features unless explicitly overridden:
+1. Table/list rows are click-selectable to open modal detail/edit.
+2. No per-row action button column (`Edit`, `Delete`) in list tables.
+3. Filters auto-apply on change (no apply/clear buttons).
+4. Modals use consistent structure:
+- close action in top-right
+- primary save action bottom-left
+- destructive delete action bottom-right with confirmation
+5. Table styling matches existing sheet-style tables:
+- subtle border
+- hover state
+- compact row spacing
+- consistent date/currency formatting
 
 ## Data Model (Current Functional)
 
@@ -148,6 +177,7 @@ Primary outcomes:
 - `cars` (includes `current_odometer`, `is_default`, `is_archived`)
 - `accounts`
 - `expense_categories`
+- `quick_actions`
 - `reimbursement_allocations` (schema exists for allocation workflows)
 
 ## Key Business Rules
@@ -176,6 +206,7 @@ Primary outcomes:
 - `/expenses`
 - `/reimbursements`
 - `/recurring`
+- `/quick-actions`
 
 ## Testing and Environment
 - Feature coverage exists for:

@@ -80,4 +80,9 @@ class Car extends Model
     {
         return $this->hasMany(RecurringTransaction::class);
     }
+
+    public function quickActions(): HasMany
+    {
+        return $this->hasMany(QuickAction::class);
+    }
 }

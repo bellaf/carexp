@@ -33,4 +33,9 @@ class ExpenseCategory extends Model
     {
         return $this->hasMany(Expense::class);
     }
+
+    public function quickActions(): HasMany
+    {
+        return $this->hasMany(QuickAction::class);
+    }
 }

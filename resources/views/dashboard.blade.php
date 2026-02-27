@@ -3,14 +3,20 @@
         class="w-full space-y-6"
         x-data="{
             activeTab: @js(request()->has('transaction_type') || request()->has('period') || request()->has('page') ? 'ledger' : 'overview'),
+            showQuickActionModal: false,
             showServiceModal: false,
             showRecurringModal: false,
+            selectedQuickAction: null,
             selectedService: null,
             selectedRecurring: null,
             maintenanceUpdateUrl: @js(route('dashboard.maintenance.update', ['maintenanceRecord' => '__ID__'])),
             maintenanceDeleteUrl: @js(route('dashboard.maintenance.delete', ['maintenanceRecord' => '__ID__'])),
             recurringUpdateUrl: @js(route('dashboard.recurring.update', ['recurringTransaction' => '__ID__'])),
-            recurringDeleteUrl: @js(route('dashboard.recurring.delete', ['recurringTransaction' => '__ID__']))
+            recurringDeleteUrl: @js(route('dashboard.recurring.delete', ['recurringTransaction' => '__ID__'])),
+            openQuickAction(payload) {
+                this.selectedQuickAction = payload;
+                this.showQuickActionModal = true;
+            }
         }"
     >
         <div>
@@ -54,6 +60,41 @@
         </flux:card>
 
         <div x-show="activeTab === 'overview'" class="space-y-6">
+            @if ($quickActions->isNotEmpty())
+                <flux:card class="space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <flux:heading>{{ __('Quick Actions') }}</flux:heading>
+                        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Configure these in the Quick Actions page.') }}</flux:text>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($quickActions as $quickAction)
+                            @php
+                                $quickActionPayload = [
+                                    'name' => $quickAction->name,
+                                    'amount' => (float) $quickAction->amount,
+                                    'amount_display' => \App\Support\CurrencyFormatter::format($quickAction->amount, $currencyCode),
+                                    'requires_amount' => (float) $quickAction->amount <= 0,
+                                    'amount_input' => (float) $quickAction->amount > 0 ? (string) $quickAction->amount : '',
+                                    'vendor' => $quickAction->vendor ?? __('N/A'),
+                                    'category' => $quickAction->expenseCategory?->name ?? __('N/A'),
+                                    'car' => $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default Car'),
+                                    'notes' => $quickAction->notes ?: __('N/A'),
+                                    'run_url' => route('dashboard.quick-actions.run', $quickAction),
+                                ];
+                            @endphp
+                            <flux:button
+                                type="button"
+                                variant="primary"
+                                x-on:click="openQuickAction({{ \Illuminate\Support\Js::from($quickActionPayload) }})"
+                            >
+                                {{ $quickAction->name }}
+                            </flux:button>
+                        @endforeach
+                    </div>
+                </flux:card>
+            @endif
+
             <div class="grid gap-4 md:grid-cols-3">
                 <flux:card class="space-y-1">
                     <flux:text>{{ __('Net Cost (All-Time)') }}</flux:text>
@@ -246,6 +287,55 @@
                 </flux:card>
             </div>
         </div>
+
+        @if ($quickActions->isNotEmpty())
+            <div
+                x-show="showQuickActionModal && selectedQuickAction"
+                x-transition.opacity
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+                x-on:click.self="showQuickActionModal = false"
+                x-on:keydown.escape.window="showQuickActionModal = false"
+            >
+                <div class="w-full max-w-xl rounded-xl border border-zinc-300 bg-white p-5 shadow-2xl ring-1 ring-black/10 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <flux:heading>{{ __('Run Quick Action') }}</flux:heading>
+                            <flux:subheading x-text="selectedQuickAction?.name"></flux:subheading>
+                        </div>
+                        <flux:button variant="ghost" x-on:click="showQuickActionModal = false">{{ __('Close') }}</flux:button>
+                    </div>
+
+                    <div class="mt-4 grid gap-2 text-sm">
+                        <div><strong>{{ __('Amount') }}:</strong> <span x-text="selectedQuickAction?.amount_display"></span></div>
+                        <div><strong>{{ __('Category') }}:</strong> <span x-text="selectedQuickAction?.category"></span></div>
+                        <div><strong>{{ __('Car') }}:</strong> <span x-text="selectedQuickAction?.car"></span></div>
+                        <div><strong>{{ __('Vendor') }}:</strong> <span x-text="selectedQuickAction?.vendor"></span></div>
+                        <div><strong>{{ __('Notes') }}:</strong> <span x-text="selectedQuickAction?.notes"></span></div>
+                    </div>
+
+                    <form class="mt-4 flex items-center justify-between gap-3" method="POST" x-bind:action="selectedQuickAction?.run_url">
+                        @csrf
+                        <div class="flex flex-col gap-3">
+                            <div x-show="selectedQuickAction?.requires_amount" x-cloak>
+                                <flux:input
+                                    :label="__('Enter Amount')"
+                                    type="number"
+                                    name="amount"
+                                    min="0.01"
+                                    step="0.01"
+                                    x-model="selectedQuickAction.amount_input"
+                                    x-bind:required="selectedQuickAction?.requires_amount"
+                                />
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <flux:button type="submit" variant="primary">{{ __('Confirm & Post') }}</flux:button>
+                                <flux:button type="button" variant="ghost" x-on:click="showQuickActionModal = false">{{ __('Cancel') }}</flux:button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
 
         <div
             x-show="showServiceModal && selectedService"

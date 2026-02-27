@@ -1,8 +1,11 @@
 <?php
 
-use Carbon\CarbonImmutable;
+use App\Models\Account;
+use App\Models\Expense;
 use App\Models\MaintenanceRecord;
+use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -192,6 +195,13 @@ Route::get('dashboard', function (Request $request) {
         ->limit(5)
         ->get();
 
+    $quickActions = $user->quickActions()
+        ->where('is_active', true)
+        ->orderBy('sort_order')
+        ->orderBy('name')
+        ->limit(4)
+        ->get();
+
     $transactions = (clone $ledgerEntries)
         ->when($selectedTransactionType !== 'all', fn ($query) => $query->where('source_type', $selectedTransactionType))
         ->when($periodStartDate !== null, fn ($query) => $query->whereDate('entry_date', '>=', $periodStartDate))
@@ -221,6 +231,7 @@ Route::get('dashboard', function (Request $request) {
         'upcomingMaintenance' => $upcomingMaintenance,
         'upcomingRecurringCount' => (int) (clone $upcomingRecurringQuery)->count(),
         'upcomingRecurringTransactions' => $upcomingRecurringTransactions,
+        'quickActions' => $quickActions,
         'totalTransactions' => (int) (clone $ledgerEntries)->count(),
         'transactions' => $transactions,
         'transactionTypeOptions' => $transactionTypeOptions,
@@ -236,9 +247,103 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('cars', 'pages::cars.index')->name('cars.index');
     Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
     Route::livewire('recurring', 'pages::recurring.index')->name('recurring.index');
+    Route::livewire('quick-actions', 'pages::quick-actions.index')->name('quick-actions.index');
     Route::livewire('fuel', 'pages::fuel.index')->name('fuel.index');
     Route::livewire('maintenance', 'pages::maintenance.index')->name('maintenance.index');
     Route::livewire('reimbursements', 'pages::reimbursements.index')->name('reimbursements.index');
+
+    Route::post('dashboard/quick-actions/{quickAction}/run', function (Request $request, QuickAction $quickAction) {
+        abort_unless($quickAction->user_id === $request->user()->id, 403);
+
+        $user = $request->user();
+        $validated = $request->validate([
+            'amount' => ['nullable', 'numeric', 'min:0.01'],
+        ]);
+        $configuredAmount = (float) $quickAction->amount;
+        $amountToPost = $configuredAmount > 0
+            ? $configuredAmount
+            : (isset($validated['amount']) ? (float) $validated['amount'] : null);
+
+        if ($amountToPost === null) {
+            return redirect()
+                ->route('dashboard')
+                ->withErrors(['quick_action_amount' => __('Please enter an amount for this quick action.')]);
+        }
+
+        $car = $quickAction->car_id !== null
+            ? $user->cars()->where('is_archived', false)->find($quickAction->car_id)
+            : $user->cars()->where('is_archived', false)->orderByDesc('is_default')->orderBy('id')->first();
+
+        if ($car === null) {
+            return redirect()->route('dashboard')->with('error', __('No active car is available for this quick action.'));
+        }
+
+        $accountKey = match ($quickAction->expenseCategory?->key) {
+            'fuel' => 'fuel_expense',
+            'maintenance' => 'maintenance_expense',
+            'repairs' => 'repairs_expense',
+            'tires' => 'tires_expense',
+            'insurance' => 'insurance_expense',
+            'registration_dmv' => 'tax_registration_expense',
+            'parking' => 'parking_expense',
+            'tolls' => 'tolls_expense',
+            default => 'other_expense',
+        };
+
+        $accountName = match ($accountKey) {
+            'fuel_expense' => 'Fuel',
+            'maintenance_expense' => 'Maintenance',
+            'repairs_expense' => 'Repairs',
+            'tires_expense' => 'Tires',
+            'insurance_expense' => 'Insurance',
+            'tax_registration_expense' => 'Tax/Registration',
+            'parking_expense' => 'Parking',
+            'tolls_expense' => 'Tolls',
+            default => 'Other Expense',
+        };
+
+        DB::transaction(function () use ($user, $car, $quickAction, $accountKey, $accountName, $amountToPost): void {
+            $expense = Expense::query()->create([
+                'user_id' => $user->id,
+                'car_id' => $car->id,
+                'expense_category_id' => $quickAction->expense_category_id,
+                'ledger_entry_id' => null,
+                'amount' => $amountToPost,
+                'expense_date' => now()->toDateString(),
+                'odometer' => $car->current_odometer,
+                'vendor' => $quickAction->vendor,
+                'notes' => $quickAction->notes,
+                'tags' => $quickAction->tags,
+            ]);
+
+            $account = Account::query()->firstOrCreate(
+                ['key' => $accountKey],
+                [
+                    'user_id' => null,
+                    'name' => $accountName,
+                    'group' => 'expense',
+                    'is_system' => true,
+                    'is_active' => true,
+                ],
+            );
+
+            $ledgerEntry = $user->ledgerEntries()->create([
+                'car_id' => $car->id,
+                'account_id' => $account->id,
+                'entry_date' => now()->toDateString(),
+                'entry_type' => 'expense',
+                'amount' => $amountToPost,
+                'source_type' => 'expense',
+                'source_id' => $expense->id,
+                'reference' => $quickAction->vendor,
+                'notes' => $quickAction->notes,
+            ]);
+
+            $expense->update(['ledger_entry_id' => $ledgerEntry->id]);
+        });
+
+        return redirect()->route('dashboard');
+    })->name('dashboard.quick-actions.run');
 
     Route::put('dashboard/maintenance/{maintenanceRecord}', function (Request $request, MaintenanceRecord $maintenanceRecord) {
         abort_unless($maintenanceRecord->user_id === $request->user()->id, 403);
