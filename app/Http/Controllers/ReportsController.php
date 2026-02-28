@@ -28,7 +28,7 @@ class ReportsController extends Controller
             'this_month' => 'This Month',
             'last_month' => 'Last Month',
             'year_to_date' => 'Year to Date',
-            'full_year' => 'Full Year',
+            'full_year' => 'Calendar Year',
             'all_time' => 'All Time',
         ];
 

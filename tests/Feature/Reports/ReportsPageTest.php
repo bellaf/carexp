@@ -51,6 +51,7 @@ test('authenticated users can view summary report totals', function () {
         ->get(route('reports.index', ['report' => 'summary', 'period' => 'year_to_date']))
         ->assertOk()
         ->assertSee('Reports')
+        ->assertSee('Calendar Year')
         ->assertSee('Monthly Trend')
         ->assertSee('150.00')
         ->assertSee('50.00')
