@@ -247,6 +247,7 @@ Route::get('dashboard', function (Request $request) {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports', ReportsController::class)->name('reports.index');
+    Route::livewire('users', 'pages::users.index')->name('users.index');
     Route::livewire('cars', 'pages::cars.index')->name('cars.index');
     Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
     Route::livewire('recurring', 'pages::recurring.index')->name('recurring.index');

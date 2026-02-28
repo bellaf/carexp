@@ -28,6 +28,10 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
+            'is_admin' => false,
+            'is_approved' => false,
+            'approved_at' => null,
+            'approved_by' => null,
         ]);
     }
 }

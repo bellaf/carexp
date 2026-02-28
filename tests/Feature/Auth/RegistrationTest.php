@@ -15,7 +15,13 @@ test('new users can register', function () {
     ]);
 
     $response->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('login', absolute: false));
 
-    $this->assertAuthenticated();
+    $this->assertGuest();
+
+    $this->assertDatabaseHas('users', [
+        'email' => 'test@example.com',
+        'is_admin' => 0,
+        'is_approved' => 0,
+    ]);
 });

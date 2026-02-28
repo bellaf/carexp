@@ -22,6 +22,9 @@ class DatabaseSeeder extends Seeder
         ], [
             'name' => 'Test User',
             'password' => Hash::make('password'),
+            'is_admin' => true,
+            'is_approved' => true,
+            'approved_at' => now(),
             'email_verified_at' => now(),
             'preferred_currency' => 'USD',
             'measurement_system' => 'imperial',

@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -24,6 +25,10 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'is_admin',
+        'is_approved',
+        'approved_at',
+        'approved_by',
         'preferred_currency',
         'measurement_system',
         'volume_unit',
@@ -53,6 +58,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
+            'is_approved' => 'boolean',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -101,6 +109,11 @@ class User extends Authenticatable
         return $this->hasMany(QuickAction::class);
     }
 
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
     /**
      * Get the user's initials
      */
@@ -111,5 +124,10 @@ class User extends Authenticatable
             ->take(2)
             ->map(fn ($word) => Str::substr($word, 0, 1))
             ->implode('');
+    }
+
+    public function canManageUsers(): bool
+    {
+        return $this->is_admin;
     }
 }

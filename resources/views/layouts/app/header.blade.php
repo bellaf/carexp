@@ -16,6 +16,11 @@
                 <flux:navbar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                     {{ __('Reports') }}
                 </flux:navbar.item>
+                @if (auth()->user()?->canManageUsers())
+                    <flux:navbar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
+                        {{ __('Users') }}
+                    </flux:navbar.item>
+                @endif
                 <flux:navbar.item icon="truck" :href="route('cars.index')" :current="request()->routeIs('cars.*')" wire:navigate>
                     {{ __('Cars') }}
                 </flux:navbar.item>
@@ -65,6 +70,11 @@
                     <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                         {{ __('Reports') }}
                     </flux:sidebar.item>
+                    @if (auth()->user()?->canManageUsers())
+                        <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
+                            {{ __('Users') }}
+                        </flux:sidebar.item>
+                    @endif
                     <flux:sidebar.item icon="truck" :href="route('cars.index')" :current="request()->routeIs('cars.*')" wire:navigate>
                         {{ __('Cars') }}
                     </flux:sidebar.item>
