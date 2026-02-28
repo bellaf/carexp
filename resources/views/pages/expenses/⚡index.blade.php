@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\Account;
+use App\Models\Attachment;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\LedgerEntry;
+use App\Support\AttachmentManager;
 use App\Support\CurrencyFormatter;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -12,13 +14,17 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new class extends Component {
+    use WithFileUploads;
+
     public bool $showForm = false;
     public bool $confirmingDelete = false;
     public ?int $editingExpenseId = null;
     public ?int $editingCategoryId = null;
     public string $categoryName = '';
+    public array $newAttachments = [];
 
     /**
      * @var array<string, mixed>
@@ -70,7 +76,11 @@ new class extends Component {
 
     public function saveExpense(): void
     {
-        $form = $this->validate($this->expenseRules(), $this->expenseMessages())['form'];
+        $validated = $this->validate(
+            array_merge($this->expenseRules(), $this->attachmentRules()),
+            array_merge($this->expenseMessages(), $this->attachmentMessages()),
+        );
+        $form = $validated['form'];
         $attributes = $this->normalizeExpenseAttributes($form);
 
         DB::transaction(function () use ($attributes): void {
@@ -82,6 +92,7 @@ new class extends Component {
             }
 
             $this->syncLedgerEntry($expense);
+            app(AttachmentManager::class)->storeMany($expense, $this->newAttachments);
         });
 
         $this->cancelForm();
@@ -112,6 +123,7 @@ new class extends Component {
         $this->showForm = false;
         $this->editingExpenseId = null;
         $this->confirmingDelete = false;
+        $this->newAttachments = [];
         $this->resetForm();
     }
 
@@ -137,6 +149,20 @@ new class extends Component {
 
         $this->deleteExpense($this->editingExpenseId);
         $this->cancelForm();
+    }
+
+    public function deleteAttachment(int $attachmentId): void
+    {
+        if ($this->editingExpenseId === null) {
+            return;
+        }
+
+        $expense = Auth::user()->expenses()->with('attachments')->findOrFail($this->editingExpenseId);
+        $attachment = $expense->attachments()->findOrFail($attachmentId);
+
+        app(AttachmentManager::class)->delete($attachment);
+
+        unset($this->editingAttachments);
     }
 
     public function startCreatingCategory(): void
@@ -229,7 +255,7 @@ new class extends Component {
 
         return Auth::user()
             ->expenses()
-            ->with(['car', 'category'])
+            ->with(['car', 'category', 'attachments'])
             ->when($this->filterCategoryId, fn ($query) => $query->where('expense_category_id', (int) $this->filterCategoryId))
             ->when($periodStartDate !== null, fn ($query) => $query->whereDate('expense_date', '>=', $periodStartDate))
             ->when($periodEndDate !== null, fn ($query) => $query->whereDate('expense_date', '<=', $periodEndDate))
@@ -242,6 +268,22 @@ new class extends Component {
     public function filteredTotal(): float
     {
         return (float) $this->expenses->sum('amount');
+    }
+
+    #[Computed]
+    public function editingAttachments(): Collection
+    {
+        if ($this->editingExpenseId === null) {
+            return new Collection();
+        }
+
+        return Auth::user()
+            ->expenses()
+            ->with('attachments')
+            ->findOrFail($this->editingExpenseId)
+            ->attachments
+            ->sortByDesc('id')
+            ->values();
     }
 
     /**
@@ -275,6 +317,28 @@ new class extends Component {
             'form.expense_category_id.required' => 'Please select a category.',
             'form.amount.required' => 'Amount is required.',
             'form.expense_date.required' => 'Date is required.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function attachmentRules(): array
+    {
+        return [
+            'newAttachments' => ['nullable', 'array'],
+            'newAttachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function attachmentMessages(): array
+    {
+        return [
+            'newAttachments.*.mimes' => 'Attachments must be JPG, PNG, or PDF files.',
+            'newAttachments.*.max' => 'Attachments must be 10MB or smaller.',
         ];
     }
 
@@ -496,6 +560,73 @@ new class extends Component {
                 <flux:input wire:model="form.tags" :label="__('Tags (comma separated)')" type="text" />
                 <flux:input wire:model="form.notes" :label="__('Notes')" type="text" />
 
+                <div class="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                    <div>
+                        <flux:heading size="sm">{{ __('Attachments') }}</flux:heading>
+                        <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Add receipt photos or PDFs.') }}</flux:text>
+                    </div>
+
+                    <flux:input wire:model="newAttachments" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" />
+
+                    <div class="space-y-2">
+                        <div wire:loading wire:target="newAttachments" class="text-sm text-zinc-500 dark:text-zinc-400">
+                            {{ __('Uploading selected files...') }}
+                        </div>
+
+                        @if ($newAttachments !== [])
+                            <div class="space-y-2">
+                                @foreach ($newAttachments as $upload)
+                                    <div class="flex items-center justify-between rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600">
+                                        <span class="truncate">{{ $upload->getClientOriginalName() }}</span>
+                                        <span class="text-zinc-500 dark:text-zinc-400">{{ __('Ready to save') }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        @if ($editingExpenseId !== null)
+                            @if ($this->editingAttachments->isEmpty())
+                                <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No saved attachments yet.') }}</flux:text>
+                            @else
+                                <div class="space-y-2">
+                                    @foreach ($this->editingAttachments as $attachment)
+                                        <div class="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700">
+                                            <div class="min-w-0">
+                                                <div class="truncate font-medium text-zinc-800 dark:text-zinc-100">{{ $attachment->original_name }}</div>
+                                                <div class="text-zinc-500 dark:text-zinc-400">
+                                                    {{ strtoupper($attachment->isPreviewableImage() ? 'Image' : 'PDF') }}
+                                                    ·
+                                                    {{ number_format($attachment->size / 1024, 1) }} KB
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center gap-2">
+                                                <a
+                                                    href="{{ route('attachments.show', $attachment) }}"
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    class="inline-flex items-center rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                                >
+                                                    {{ __('Open') }}
+                                                </a>
+                                                <flux:button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    class="text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
+                                                    wire:click="deleteAttachment({{ $attachment->id }})"
+                                                >
+                                                    {{ __('Delete') }}
+                                                </flux:button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+                </div>
+
                 <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-3">
                         <flux:button type="submit" variant="primary">{{ __('Save Expense') }}</flux:button>
@@ -583,6 +714,9 @@ new class extends Component {
                         <div>
                             <div class="font-medium">{{ $expense->category->name }}</div>
                             <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $expense->expense_date->format('d-m-Y') }}</div>
+                            @if ($expense->attachments->isNotEmpty())
+                                <div class="text-xs text-sky-700 dark:text-sky-300">{{ __('Docs attached') }}</div>
+                            @endif
                         </div>
                         <div class="text-right font-semibold">{{ $this->formatCurrency($expense->amount) }}</div>
                     </div>
@@ -626,7 +760,12 @@ new class extends Component {
                             wire:key="expense-row-{{ $expense->id }}"
                         >
                             <td class="px-3 py-2">{{ $expense->expense_date->format('d-m-Y') }}</td>
-                            <td class="px-3 py-2">{{ $expense->category->name }}</td>
+                            <td class="px-3 py-2">
+                                <div>{{ $expense->category->name }}</div>
+                                @if ($expense->attachments->isNotEmpty())
+                                    <div class="text-xs text-sky-700 dark:text-sky-300">{{ __('Docs attached') }}</div>
+                                @endif
+                            </td>
                             <td class="px-3 py-2">{{ $expense->vendor ?: __('N/A') }}</td>
                             <td class="px-3 py-2">{{ $expense->odometer !== null ? number_format((float) $expense->odometer) : __('N/A') }}</td>
                             <td class="px-3 py-2">{{ implode(', ', $expense->tags ?? []) ?: __('N/A') }}</td>

@@ -4,6 +4,8 @@ use App\Models\Account;
 use App\Models\Car;
 use App\Models\User;
 use App\Models\VehicleObligation;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 test('guests are redirected to login from obligations page', function () {
@@ -23,6 +25,8 @@ test('authenticated users can view obligations page', function () {
 });
 
 test('user can create obligation with linked ledger entry', function () {
+    Storage::fake('local');
+
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
 
@@ -36,6 +40,7 @@ test('user can create obligation with linked ledger entry', function () {
         ->set('form.reference', 'POL123')
         ->set('form.due_date', now()->addDays(20)->format('Y-m-d'))
         ->set('form.amount', '420.50')
+        ->set('newAttachments', [UploadedFile::fake()->create('policy.pdf', 50, 'application/pdf')])
         ->call('saveObligation')
         ->assertHasNoErrors();
 
@@ -50,6 +55,8 @@ test('user can create obligation with linked ledger entry', function () {
     $obligation = VehicleObligation::query()->where('user_id', $user->id)->firstOrFail();
 
     expect($obligation->ledger_entry_id)->not->toBeNull();
+    expect($obligation->attachments)->toHaveCount(1);
+    Storage::disk('local')->assertExists($obligation->attachments->first()->path);
 
     $this->assertDatabaseHas('ledger_entries', [
         'id' => $obligation->ledger_entry_id,
@@ -150,4 +157,29 @@ test('user can renew obligation and create next years entry', function () {
     expect($renewal->is_active)->toBeTrue();
     expect($renewal->completed_at)->toBeNull();
     expect($renewal->ledger_entry_id)->toBeNull();
+});
+
+test('obligations page shows docs attached hint for rows with attachments', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+    $obligation = VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+    ]);
+
+    Storage::disk('local')->put('attachments/test/policy.pdf', 'pdf');
+    $obligation->attachments()->create([
+        'user_id' => $user->id,
+        'disk' => 'local',
+        'path' => 'attachments/test/policy.pdf',
+        'original_name' => 'policy.pdf',
+        'mime_type' => 'application/pdf',
+        'size' => 3,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('obligations.index'))
+        ->assertOk()
+        ->assertSee('Docs attached');
 });

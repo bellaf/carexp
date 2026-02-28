@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class VehicleObligation extends Model
 {
@@ -45,6 +46,13 @@ class VehicleObligation extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (self $obligation): void {
+            $obligation->attachments->each(fn (Attachment $attachment) => app(\App\Support\AttachmentManager::class)->delete($attachment));
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -68,5 +76,10 @@ class VehicleObligation extends Model
     public function renewals(): HasMany
     {
         return $this->hasMany(self::class, 'renewed_from_id');
+    }
+
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
     }
 }
