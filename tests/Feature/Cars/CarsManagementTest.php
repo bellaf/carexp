@@ -65,6 +65,34 @@ test('user can update and archive their car', function () {
         ->and($car->is_archived)->toBeTrue();
 });
 
+test('user can record vehicle sale details', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'purchase_price' => 10000,
+        'purchase_odometer' => 50000,
+        'current_odometer' => 65000,
+        'sale_date' => null,
+        'sale_price' => null,
+        'sale_odometer' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::cars.index')
+        ->call('editCar', $car->id)
+        ->set('form.sale_date', '2026-02-28')
+        ->set('form.sale_price', '7800.00')
+        ->set('form.sale_odometer', 64800)
+        ->call('saveCar')
+        ->assertHasNoErrors();
+
+    $car->refresh();
+
+    expect($car->sale_date?->format('Y-m-d'))->toBe('2026-02-28')
+        ->and((float) $car->sale_price)->toBe(7800.00)
+        ->and($car->sale_odometer)->toBe(64800);
+});
+
 test('user can set a different car as current', function () {
     $user = User::factory()->create();
     $firstCar = Car::factory()->for($user)->create([

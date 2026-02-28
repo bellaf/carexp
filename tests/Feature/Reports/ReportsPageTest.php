@@ -157,3 +157,151 @@ test('obligations report shows due items by period', function () {
         ->assertSee('Admiral')
         ->assertDontSee('DVLA');
 });
+
+test('ownership report shows all time cost per distance metrics by car', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+    ]);
+    $car = Car::factory()->for($user)->create([
+        'year' => 2020,
+        'make' => 'Toyota',
+        'model' => 'Corolla',
+        'purchase_odometer' => 10000,
+        'current_odometer' => 12000,
+    ]);
+
+    $fuelAccount = Account::factory()->create([
+        'key' => 'fuel_expense',
+        'name' => 'Fuel',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $maintenanceAccount = Account::factory()->create([
+        'key' => 'maintenance_expense',
+        'name' => 'Maintenance',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $fuelAccount->id,
+        'entry_date' => now()->toDateString(),
+        'entry_type' => 'expense',
+        'amount' => 150,
+        'source_type' => 'fuel_log',
+        'source_id' => 1,
+    ]);
+
+    $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $maintenanceAccount->id,
+        'entry_date' => now()->toDateString(),
+        'entry_type' => 'expense',
+        'amount' => 50,
+        'source_type' => 'maintenance_record',
+        'source_id' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('reports.index', ['report' => 'ownership']))
+        ->assertOk()
+        ->assertSee('Ownership Metrics')
+        ->assertSee('Toyota Corolla')
+        ->assertSee('2,000 mi')
+        ->assertSee('$0.10/mi')
+        ->assertSee('$0.08/mi')
+        ->assertSee('$0.03/mi');
+});
+
+test('ownership report shows sold vehicle closure metrics', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+    ]);
+    $car = Car::factory()->for($user)->create([
+        'year' => 2019,
+        'make' => 'Honda',
+        'model' => 'Civic',
+        'purchase_odometer' => 30000,
+        'current_odometer' => 60000,
+        'purchase_price' => 12000,
+        'sale_date' => '2026-02-28',
+        'sale_price' => 7000,
+        'sale_odometer' => 59000,
+    ]);
+
+    $fuelAccount = Account::factory()->create([
+        'key' => 'fuel_expense',
+        'name' => 'Fuel',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $fuelAccount->id,
+        'entry_date' => now()->toDateString(),
+        'entry_type' => 'expense',
+        'amount' => 590,
+        'source_type' => 'fuel_log',
+        'source_id' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('reports.index', ['report' => 'ownership']))
+        ->assertOk()
+        ->assertSee('Honda Civic')
+        ->assertSee('Sold')
+        ->assertSee('29,000 mi')
+        ->assertSee('$12,000.00')
+        ->assertSee('$7,000.00')
+        ->assertSee('$5,590.00')
+        ->assertSee('$0.19/mi');
+});
+
+test('ownership report falls back to recorded odometer history when purchase odometer is missing', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+    ]);
+    $car = Car::factory()->for($user)->create([
+        'year' => 2020,
+        'make' => 'Toyota',
+        'model' => 'Corolla',
+        'purchase_odometer' => null,
+        'current_odometer' => 12000,
+    ]);
+
+    $fuelAccount = Account::factory()->create([
+        'key' => 'fuel_expense',
+        'name' => 'Fuel',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $firstLedgerEntry = LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $fuelAccount->id,
+        'entry_type' => 'expense',
+        'amount' => 120,
+        'entry_date' => now()->subMonths(2)->toDateString(),
+        'source_type' => 'fuel_log',
+    ]);
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'ledger_entry_id' => $firstLedgerEntry->id,
+        'log_date' => now()->subMonths(2)->toDateString(),
+        'odometer' => 10000,
+        'volume' => 20,
+        'volume_unit' => 'liters',
+        'price_per_unit' => 1.2,
+        'full_tank' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('reports.index', ['report' => 'ownership']))
+        ->assertOk()
+        ->assertSee('2,000 mi')
+        ->assertSee('$0.06/mi');
+});

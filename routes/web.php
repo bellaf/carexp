@@ -10,6 +10,7 @@ use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
 use App\Models\Reimbursement;
 use App\Models\VehicleObligation;
+use App\Support\OwnershipCostMetrics;
 use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -209,6 +210,22 @@ Route::get('dashboard', function (Request $request) {
         ->limit(4)
         ->get();
 
+    $currentCarOwnershipMetrics = null;
+
+    if ($currentCar !== null) {
+        $currentCarLedgerEntries = $user->ledgerEntries()
+            ->with('account')
+            ->where('car_id', $currentCar->id)
+            ->get();
+
+        $currentCarOwnershipMetrics = OwnershipCostMetrics::forCar(
+            $currentCar,
+            $currentCarLedgerEntries,
+            $user->preferred_currency,
+            $user->measurement_system,
+        );
+    }
+
     $upcomingObligationsAll = $user->vehicleObligations()
         ->with('car')
         ->where('is_active', true)
@@ -234,6 +251,7 @@ Route::get('dashboard', function (Request $request) {
     return view('dashboard', [
         'currencyCode' => $user->preferred_currency,
         'currentCar' => $currentCar,
+        'currentCarOwnershipMetrics' => $currentCarOwnershipMetrics,
         'allTimeExpenses' => $allTimeExpenses,
         'allTimeReimbursements' => $allTimeReimbursements,
         'allTimeNetCost' => $allTimeExpenses - $allTimeReimbursements,

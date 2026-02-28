@@ -130,6 +130,40 @@
             </div>
 
             <flux:card class="space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                    <flux:heading>{{ __('Current Car Ownership Metrics') }}</flux:heading>
+                    <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('All-time running costs based on purchase to current odometer.') }}</flux:text>
+                </div>
+
+                @if ($currentCar === null || $currentCarOwnershipMetrics === null)
+                    <flux:text>{{ __('Set a current car to view ownership metrics.') }}</flux:text>
+                @else
+                    <div class="grid gap-4 md:grid-cols-5">
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Distance Travelled') }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['distance_display'] }}</flux:heading>
+                        </flux:card>
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Net Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['net_cost_per_distance_display'] }}</flux:heading>
+                        </flux:card>
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Fuel Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['fuel_cost_per_distance_display'] }}</flux:heading>
+                        </flux:card>
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Maintenance Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['maintenance_cost_per_distance_display'] }}</flux:heading>
+                        </flux:card>
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Total Ownership Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['total_ownership_cost_per_distance_display'] }}</flux:heading>
+                        </flux:card>
+                    </div>
+                @endif
+            </flux:card>
+
+            <flux:card class="space-y-3">
                 <flux:heading>{{ __('Financial Summary') }}</flux:heading>
                 <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
                     {{ __('Expenses are shown in red, reimbursements in green, and net values are green when in surplus (negative).') }}

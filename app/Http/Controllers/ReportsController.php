@@ -7,6 +7,7 @@ use App\Models\LedgerEntry;
 use App\Models\User;
 use App\Models\VehicleObligation;
 use App\Support\CurrencyFormatter;
+use App\Support\OwnershipCostMetrics;
 use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -25,6 +26,7 @@ class ReportsController extends Controller
             'category' => 'Category Breakdown',
             'fuel' => 'Fuel Analysis',
             'obligations' => 'Obligations',
+            'ownership' => 'Ownership Metrics',
         ];
 
         $periodOptions = [
@@ -59,7 +61,9 @@ class ReportsController extends Controller
             $selectedCarId = null;
         }
 
-        [$startDate, $endDate] = $this->resolveDateRange($selectedPeriod, $selectedYear);
+        [$startDate, $endDate] = $selectedReport === 'ownership'
+            ? [null, null]
+            : $this->resolveDateRange($selectedPeriod, $selectedYear);
 
         $ledgerEntries = $this->filteredLedgerEntries($user, $selectedCarId, $startDate, $endDate);
         $fuelLogs = $this->filteredFuelLogs($user, $selectedCarId, $startDate, $endDate);
@@ -83,6 +87,7 @@ class ReportsController extends Controller
             'fuelMonthlyRows' => $this->fuelMonthlyTrend($fuelLogs, $user->preferred_currency),
             'obligationSummary' => $this->obligationSummary($vehicleObligations, $user->preferred_currency),
             'obligationRows' => $this->obligationRows($vehicleObligations, $user->preferred_currency),
+            'ownershipRows' => $this->ownershipRows($cars, $selectedCarId, $user->preferred_currency, $user->measurement_system),
         ]);
     }
 
@@ -283,6 +288,33 @@ class ReportsController extends Controller
                     'cost' => CurrencyFormatter::format($obligation->amount, $currencyCode),
                     'status' => VehicleObligationStatus::label($obligation),
                     'status_key' => VehicleObligationStatus::status($obligation),
+                ];
+            })
+            ->values();
+    }
+
+    private function ownershipRows(Collection $cars, ?int $selectedCarId, string $currencyCode, string $measurementSystem): Collection
+    {
+        return $cars
+            ->when($selectedCarId !== null, fn (Collection $collection): Collection => $collection->where('id', $selectedCarId)->values())
+            ->map(function ($car) use ($currencyCode, $measurementSystem): array {
+                $ledgerEntries = $car->ledgerEntries()->with('account')->get();
+                $metrics = OwnershipCostMetrics::forCar($car, $ledgerEntries, $currencyCode, $measurementSystem);
+
+                return [
+                    'car' => trim(collect([$car->year, $car->make, $car->model])->filter()->implode(' ')) ?: 'N/A',
+                    'status' => $car->sale_date !== null ? 'Sold' : 'Owned',
+                    'distance' => $metrics['distance_display'],
+                    'purchase_price' => CurrencyFormatter::format($metrics['purchase_price_value'], $currencyCode),
+                    'sale_price' => $car->sale_date !== null ? CurrencyFormatter::format($metrics['sale_price_value'], $currencyCode) : 'N/A',
+                    'expense_total' => CurrencyFormatter::format($metrics['expense_total_value'], $currencyCode),
+                    'income_total' => CurrencyFormatter::format($metrics['income_total_value'], $currencyCode),
+                    'net_cost' => CurrencyFormatter::format($metrics['net_cost_value'], $currencyCode),
+                    'total_ownership_cost' => CurrencyFormatter::format($metrics['total_ownership_cost_value'], $currencyCode),
+                    'net_cost_per_distance' => $metrics['net_cost_per_distance_display'],
+                    'fuel_cost_per_distance' => $metrics['fuel_cost_per_distance_display'],
+                    'maintenance_cost_per_distance' => $metrics['maintenance_cost_per_distance_display'],
+                    'total_ownership_cost_per_distance' => $metrics['total_ownership_cost_per_distance_display'],
                 ];
             })
             ->values();

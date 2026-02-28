@@ -29,6 +29,9 @@ class Car extends Model
         'purchase_price',
         'purchase_odometer',
         'current_odometer',
+        'sale_date',
+        'sale_price',
+        'sale_odometer',
         'is_archived',
         'is_default',
     ];
@@ -41,6 +44,8 @@ class Car extends Model
         return [
             'purchase_date' => 'date',
             'purchase_price' => 'decimal:2',
+            'sale_date' => 'date',
+            'sale_price' => 'decimal:2',
             'is_archived' => 'boolean',
             'is_default' => 'boolean',
         ];
