@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ReportsController;
 use App\Models\Account;
 use App\Models\Expense;
 use App\Models\FuelLog;
@@ -245,6 +246,7 @@ Route::get('dashboard', function (Request $request) {
     ->name('dashboard');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('reports', ReportsController::class)->name('reports.index');
     Route::livewire('cars', 'pages::cars.index')->name('cars.index');
     Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
     Route::livewire('recurring', 'pages::recurring.index')->name('recurring.index');

@@ -5,7 +5,7 @@ CarExp - Personal Car Expense + Reimbursement Ledger
 
 ## Document Status
 - Version: Current implementation baseline
-- Date: 26-02-2026
+- Date: 28-02-2026
 - Purpose: Describe what the app does now, based on the shipped codebase.
 
 ## Product Summary
@@ -16,6 +16,7 @@ Primary outcomes:
 - Track net car cost over time
 - Forecast year-end impact from recurring schedules
 - Surface upcoming service and recurring due items
+- Review summary, category, and fuel reports from logged data
 
 ## Core Principles
 1. Ledger-centric finance model
@@ -47,6 +48,8 @@ Primary outcomes:
   - `preferred_currency`
   - `measurement_system` (imperial/metric)
   - `volume_unit` (gallons/liters)
+  - `ui_theme` (`classic`, `warm-paper`, `soft-automotive`, `editorial-neutral`)
+  - appearance mode remains Light / Dark / System
 
 ### 2. Cars
 - Add/edit/archive/restore cars
@@ -114,23 +117,53 @@ Primary outcomes:
   - Unified ledger-backed table
   - Filters: transaction type + period
   - Auto-apply on change (no apply/clear buttons)
+- Mobile behavior:
+  - Quick actions are rendered as larger touch-friendly buttons
+  - Financial summary, due notices, and ledger views have mobile card layouts in addition to desktop tables
 
 ### 9. Quick actions
 - Purpose:
-  - User-defined one-click expense templates for frequent transactions (for example tolls, parking)
+  - User-defined one-click templates for frequent transactions (for example tolls, parking, fuel)
 - Definition fields:
-  - name, category, optional car, optional amount, vendor, notes, tags, active flag, sort order
+  - name, target (`expense` or `fuel_log`), optional car, optional amount, optional fuel volume, default full tank flag, vendor, notes, tags, active flag, sort order
 - Dashboard behavior:
   - Up to 4 active quick actions are shown
   - If no quick actions are defined, quick action buttons are hidden
   - Clicking a quick action opens a confirmation modal summary before posting
   - If definition amount is `0` or empty, modal requires entry of amount before confirm/post
+  - If quick action target is fuel, modal can collect odometer, fuel volume, and full tank status
 - Posting behavior:
-  - Creates an `expenses` row and matching `ledger_entries` expense row
+  - Expense target: creates an `expenses` row and matching `ledger_entries` expense row
+  - Fuel target: creates a `fuel_logs` row and matching `ledger_entries` expense row
+
+### 10. Reports
+- Dedicated reports page at `/reports`
+- Current report modes:
+  - Summary
+  - Category Breakdown
+  - Fuel Analysis
+- Filters:
+  - report type
+  - period
+  - selected year when `Full Year` is chosen
+  - optional car filter
+- Data sources:
+  - Summary and Category reports read from `ledger_entries`
+  - Fuel report reads from `fuel_logs` plus linked ledger spend
+- Current outputs:
+  - Summary cards
+  - monthly trend tables/cards
+  - category totals
+  - fuel spend, volume, average price, and average efficiency
 
 ## UI/UX Conventions (Current)
 - Date display standard in app tables/views: `dd-mm-yyyy`
 - List views use simplified sheet-style tables
+- Light theme variants are available in Settings > Appearance:
+  - Classic
+  - Warm Paper
+  - Soft Automotive
+  - Editorial Neutral
 - Filter behavior:
   - Auto-apply via Livewire/model change
   - Constrained select widths (not full-card stretch on desktop)
@@ -142,6 +175,10 @@ Primary outcomes:
   - Close control in top-right
   - Save/edit actions left-aligned in footer area
   - Delete action separated on right with confirmation where destructive
+- Mobile conventions:
+  - Frequently used entry screens prioritize the primary add action at top
+  - Dense tables fall back to touch-friendly card layouts on small screens
+  - Secondary filters are reduced or tucked behind simple disclosure sections on mobile where appropriate
 
 ## Default UI Standard (Future Features)
 This standard is now the default expectation for all new list-style features unless explicitly overridden:
@@ -157,6 +194,10 @@ This standard is now the default expectation for all new list-style features unl
 - hover state
 - compact row spacing
 - consistent date/currency formatting
+6. Mobile-first presentation is required:
+- primary actions remain immediately visible
+- secondary filters should not dominate the first screen
+- narrow screens should prefer stacked cards over wide horizontal tables when practical
 
 ## Data Model (Current Functional)
 
@@ -179,6 +220,7 @@ This standard is now the default expectation for all new list-style features unl
 - `expense_categories`
 - `quick_actions`
 - `reimbursement_allocations` (schema exists for allocation workflows)
+- `users.ui_theme` stores selected light-theme palette preference
 
 ## Key Business Rules
 1. Ledger is the financial source of truth.
@@ -197,9 +239,11 @@ This standard is now the default expectation for all new list-style features unl
 - Accounts are used for ledger classification (expense/income groups).
 - Expense categories remain for manual expense UX and map into ledger accounts.
 - Fuel and maintenance are effectively categorized by `source_type` and account key in ledger reporting.
+- Reports use ledger account grouping for cross-module category totals.
 
 ## Routing Map (Authenticated)
 - `/dashboard`
+- `/reports`
 - `/cars`
 - `/fuel`
 - `/maintenance`
@@ -215,6 +259,8 @@ This standard is now the default expectation for all new list-style features unl
   - Expenses CRUD and ledger sync
   - Reimbursements CRUD and ledger sync
   - Recurring CRUD and generation command
+  - Reports page summary/category/fuel outputs
+  - Appearance/theme preference updates
 - PHPUnit test environment now uses SQLite:
   - `DB_CONNECTION=sqlite`
   - `DB_DATABASE=database/testing.sqlite`
@@ -224,8 +270,16 @@ This standard is now the default expectation for all new list-style features unl
 1. Reimbursement allocation workflow exists at schema level but is not yet exposed as a full UI flow.
 2. Account management UI is minimal; most defaults come from seeders/auto-ensure logic.
 3. Dashboard forecast currently projects from recurring schedules only; no scenario modeling beyond that.
-4. CSV/export/reporting endpoints are not yet implemented as a dedicated module.
+4. Reports are currently on-screen only; export/print/PDF is not yet implemented.
+5. Reporting remains intentionally simple; no charting or advanced analytics yet.
 
 ## Operational Notes
 - Recurring generation in production should be executed via scheduler/cron (`app:generate-recurring-transactions`).
 - During development, the recurring page includes a manual trigger button for due entry generation.
+- A simple repo-level deploy script exists: `./deploy.sh`
+- Current deploy script flow:
+  - `git pull --ff-only`
+  - `composer install --no-dev --optimize-autoloader`
+  - `npm ci && npm run build` when npm is available
+  - `php artisan migrate --force`
+  - cache clear + production cache rebuild
