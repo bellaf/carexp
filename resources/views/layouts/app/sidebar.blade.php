@@ -21,6 +21,9 @@
                     <flux:sidebar.item icon="truck" :href="route('cars.index')" :current="request()->routeIs('cars.*')" wire:navigate>
                         {{ __('Cars') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="clock" :href="route('history.index')" :current="request()->routeIs('history.*')" wire:navigate>
+                        {{ __('History') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="banknotes" :href="route('expenses.index')" :current="request()->routeIs('expenses.*')" wire:navigate>
                         {{ __('Expenses') }}
                     </flux:sidebar.item>

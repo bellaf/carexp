@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\ServiceHistoryController;
 use App\Models\Account;
 use App\Models\Expense;
 use App\Models\FuelLog;
@@ -284,7 +286,10 @@ Route::get('dashboard', function (Request $request) {
     ->name('dashboard');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('attachments/{attachment}', AttachmentController::class)->name('attachments.show');
+
     Route::get('reports', ReportsController::class)->name('reports.index');
+    Route::get('history', ServiceHistoryController::class)->name('history.index');
     Route::livewire('users', 'pages::users.index')->name('users.index');
     Route::livewire('cars', 'pages::cars.index')->name('cars.index');
     Route::livewire('obligations', 'pages::obligations.index')->name('obligations.index');

@@ -2,6 +2,7 @@
 
 use App\Models\Account;
 use App\Support\CurrencyFormatter;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
@@ -106,6 +107,33 @@ new class extends Component {
         }
     }
 
+    public function skipNextOccurrence(int $recurringId): void
+    {
+        $recurring = Auth::user()->recurringTransactions()->findOrFail($recurringId);
+        $nextEntryDate = $this->nextCadenceDate(
+            CarbonImmutable::parse($recurring->next_entry_date),
+            $recurring->cadence,
+        );
+
+        if ($recurring->end_date !== null && $nextEntryDate->gt(CarbonImmutable::parse($recurring->end_date))) {
+            $recurring->update([
+                'next_entry_date' => $nextEntryDate->toDateString(),
+                'is_active' => false,
+            ]);
+        } else {
+            $recurring->update([
+                'next_entry_date' => $nextEntryDate->toDateString(),
+            ]);
+        }
+
+        if ($this->editingRecurringId === $recurringId) {
+            $this->form['next_entry_date'] = $nextEntryDate->toDateString();
+            $this->form['is_active'] = $recurring->fresh()->is_active;
+        }
+
+        $this->dispatch('recurring-skipped');
+    }
+
     public function cancelForm(): void
     {
         $this->showForm = false;
@@ -169,6 +197,33 @@ new class extends Component {
     public function formatCurrency(float|int|string|null $amount): string
     {
         return CurrencyFormatter::format($amount, Auth::user()->preferred_currency);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function upcomingPreviewDates(): array
+    {
+        if ($this->editingRecurringId === null || ($this->form['next_entry_date'] ?? '') === '') {
+            return [];
+        }
+
+        $dates = [];
+        $currentDate = CarbonImmutable::parse((string) $this->form['next_entry_date']);
+        $endDate = ($this->form['end_date'] ?? '') !== ''
+            ? CarbonImmutable::parse((string) $this->form['end_date'])
+            : null;
+
+        while (count($dates) < 4) {
+            if ($endDate !== null && $currentDate->gt($endDate)) {
+                break;
+            }
+
+            $dates[] = $currentDate->format('d-m-Y');
+            $currentDate = $this->nextCadenceDate($currentDate, (string) $this->form['cadence']);
+        }
+
+        return $dates;
     }
 
     #[Computed]
@@ -324,6 +379,15 @@ new class extends Component {
             'is_active' => true,
         ];
     }
+
+    protected function nextCadenceDate(CarbonImmutable $date, string $cadence): CarbonImmutable
+    {
+        return match ($cadence) {
+            'quarterly' => $date->addMonthsNoOverflow(3),
+            'yearly' => $date->addYearNoOverflow(),
+            default => $date->addMonthNoOverflow(),
+        };
+    }
 }; ?>
 
 <section class="w-full space-y-6">
@@ -351,6 +415,9 @@ new class extends Component {
 
     <x-action-message on="recurring-generated">
         {{ __('Recurring generation command executed.') }}
+    </x-action-message>
+    <x-action-message on="recurring-skipped">
+        {{ __('Next occurrence skipped.') }}
     </x-action-message>
 
     @if ($showForm)
@@ -543,6 +610,27 @@ new class extends Component {
                         </div>
                         <flux:text><strong>{{ __('Notes') }}:</strong> {{ $form['notes'] !== '' ? $form['notes'] : __('N/A') }}</flux:text>
                     @endif
+
+                    @if ($editingRecurringId !== null)
+                        <div class="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                            <div>
+                                <flux:heading size="sm">{{ __('Upcoming Preview') }}</flux:heading>
+                                <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Next scheduled posting dates based on the current cadence.') }}</flux:text>
+                            </div>
+
+                            @if ($this->upcomingPreviewDates() === [])
+                                <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No upcoming dates available.') }}</flux:text>
+                            @else
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($this->upcomingPreviewDates() as $previewDate)
+                                        <span class="inline-flex rounded-full border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200">
+                                            {{ $previewDate }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
                 </div>
 
                 <div class="mt-5 flex flex-wrap items-center gap-2">
@@ -556,6 +644,9 @@ new class extends Component {
 
                             <flux:button variant="ghost" wire:click="toggleRecurringActive({{ $editingRecurringId }})">
                                 {{ $form['is_active'] ? __('Pause') : __('Activate') }}
+                            </flux:button>
+                            <flux:button variant="ghost" wire:click="skipNextOccurrence({{ $editingRecurringId }})">
+                                {{ __('Skip Next Occurrence') }}
                             </flux:button>
                         </div>
 

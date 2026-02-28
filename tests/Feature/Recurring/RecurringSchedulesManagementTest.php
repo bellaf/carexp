@@ -107,3 +107,62 @@ test('user can trigger recurring generation from recurring page in dev', functio
         'reference' => 'Dev Run',
     ]);
 });
+
+test('user can skip next recurring occurrence from modal', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create([
+        'group' => 'expense',
+        'name' => 'Parking',
+        'key' => 'parking_expense',
+        'is_system' => true,
+    ]);
+
+    $schedule = RecurringTransaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'cadence' => 'monthly',
+        'next_entry_date' => '2026-03-15',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::recurring.index')
+        ->call('openRecurringDetails', $schedule->id)
+        ->call('skipNextOccurrence', $schedule->id)
+        ->assertHasNoErrors();
+
+    $schedule->refresh();
+
+    expect($schedule->next_entry_date->format('Y-m-d'))->toBe('2026-04-15');
+    expect($schedule->is_active)->toBeTrue();
+});
+
+test('recurring modal shows upcoming preview dates', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create([
+        'group' => 'income',
+        'name' => 'Allowance',
+        'key' => 'company_car_allowance_income',
+        'is_system' => true,
+    ]);
+
+    $schedule = RecurringTransaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'entry_type' => 'income',
+        'cadence' => 'quarterly',
+        'next_entry_date' => '2026-01-10',
+        'end_date' => '2026-12-31',
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::recurring.index')
+        ->call('openRecurringDetails', $schedule->id)
+        ->assertSee('Upcoming Preview')
+        ->assertSee('10-01-2026')
+        ->assertSee('10-04-2026')
+        ->assertSee('10-07-2026')
+        ->assertSee('10-10-2026');
+});

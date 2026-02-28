@@ -4,6 +4,7 @@ use App\Models\Account;
 use App\Models\Car;
 use App\Models\MaintenanceRecord;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 test('guests are redirected to login from maintenance page', function () {
@@ -84,6 +85,31 @@ test('user can update and delete maintenance record', function () {
     $this->assertDatabaseMissing('maintenance_records', ['id' => $record->id]);
 });
 
+test('maintenance page shows docs attached hint for rows with attachments', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+    $record = MaintenanceRecord::factory()->for($car)->create([
+        'user_id' => $user->id,
+    ]);
+
+    Storage::disk('local')->put('attachments/test/invoice.pdf', 'pdf');
+    $record->attachments()->create([
+        'user_id' => $user->id,
+        'disk' => 'local',
+        'path' => 'attachments/test/invoice.pdf',
+        'original_name' => 'invoice.pdf',
+        'mime_type' => 'application/pdf',
+        'size' => 3,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('maintenance.index'))
+        ->assertOk()
+        ->assertSee('Docs attached');
+});
+
 test('user can save custom service type via other option', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
@@ -107,6 +133,8 @@ test('user can save custom service type via other option', function () {
 });
 
 test('deleting maintenance record also removes linked ledger entry', function () {
+    Storage::fake('local');
+
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
 
@@ -130,6 +158,16 @@ test('deleting maintenance record also removes linked ledger entry', function ()
         ])->id,
     ]);
 
+    $attachment = $record->attachments()->create([
+        'user_id' => $user->id,
+        'disk' => 'local',
+        'path' => 'attachments/maintenance/test-invoice.pdf',
+        'original_name' => 'invoice.pdf',
+        'mime_type' => 'application/pdf',
+        'size' => 1200,
+    ]);
+    Storage::disk('local')->put($attachment->path, 'invoice');
+
     $this->actingAs($user);
 
     Livewire::test('pages::maintenance.index')
@@ -138,4 +176,6 @@ test('deleting maintenance record also removes linked ledger entry', function ()
 
     $this->assertDatabaseMissing('maintenance_records', ['id' => $record->id]);
     $this->assertDatabaseMissing('ledger_entries', ['id' => $record->ledger_entry_id]);
+    $this->assertDatabaseMissing('attachments', ['id' => $attachment->id]);
+    Storage::disk('local')->assertMissing($attachment->path);
 });

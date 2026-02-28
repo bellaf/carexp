@@ -5,6 +5,8 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\User;
 use Database\Seeders\ExpenseCategorySeeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 test('guests are redirected to login from expenses page', function () {
@@ -25,6 +27,8 @@ test('authenticated users can view expenses page', function () {
 });
 
 test('user can create an expense', function () {
+    Storage::fake('local');
+
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
     $category = ExpenseCategory::factory()->create();
@@ -39,6 +43,7 @@ test('user can create an expense', function () {
         ->set('form.expense_date', now()->format('Y-m-d'))
         ->set('form.vendor', 'Shell')
         ->set('form.tags', 'personal, fuel')
+        ->set('newAttachments', [UploadedFile::fake()->image('receipt.jpg')])
         ->call('saveExpense')
         ->assertHasNoErrors();
 
@@ -57,6 +62,9 @@ test('user can create an expense', function () {
         ->firstOrFail();
 
     expect($expense->ledger_entry_id)->not->toBeNull();
+    expect($expense->attachments)->toHaveCount(1);
+
+    Storage::disk('local')->assertExists($expense->attachments->first()->path);
     $this->assertDatabaseHas('ledger_entries', [
         'id' => $expense->ledger_entry_id,
         'user_id' => $user->id,
@@ -91,6 +99,34 @@ test('user can filter expenses by category', function () {
         ->set('filterCategoryId', (string) $fuel->id)
         ->assertSee('Fuel Station')
         ->assertDontSee('Insurance Co');
+});
+
+test('expenses page shows docs attached hint for rows with attachments', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+    $category = ExpenseCategory::factory()->create(['name' => 'Parking']);
+    $expense = Expense::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'expense_category_id' => $category->id,
+        'expense_date' => now()->toDateString(),
+    ]);
+
+    Storage::disk('local')->put('attachments/test/receipt.pdf', 'pdf');
+    $expense->attachments()->create([
+        'user_id' => $user->id,
+        'disk' => 'local',
+        'path' => 'attachments/test/receipt.pdf',
+        'original_name' => 'receipt.pdf',
+        'mime_type' => 'application/pdf',
+        'size' => 3,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('expenses.index'))
+        ->assertOk()
+        ->assertSee('Docs attached');
 });
 
 test('user can update and delete their expense', function () {

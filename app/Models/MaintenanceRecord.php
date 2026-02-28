@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class MaintenanceRecord extends Model
 {
@@ -38,6 +39,13 @@ class MaintenanceRecord extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (self $record): void {
+            $record->attachments->each(fn (Attachment $attachment) => app(\App\Support\AttachmentManager::class)->delete($attachment));
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -51,5 +59,10 @@ class MaintenanceRecord extends Model
     public function ledgerEntry(): BelongsTo
     {
         return $this->belongsTo(LedgerEntry::class);
+    }
+
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
     }
 }

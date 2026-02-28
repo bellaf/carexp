@@ -9,7 +9,7 @@ CarExp - Personal Car Expense + Reimbursement Ledger
 - Purpose: Describe what the app does now, based on the shipped codebase.
 
 ## Product Summary
-CarExp tracks vehicle operating activity (fuel, maintenance, manual expenses, reimbursements) and records all money movement in a unified `ledger_entries` table.
+CarExp tracks vehicle operating activity (fuel, maintenance, manual expenses, reimbursements, obligations) and records all money movement in a unified `ledger_entries` table.
 
 Primary outcomes:
 - Understand total spend vs reimbursements
@@ -17,6 +17,8 @@ Primary outcomes:
 - Forecast year-end impact from recurring schedules
 - Surface upcoming service and recurring due items
 - Review summary, category, and fuel reports from logged data
+- Keep supporting documents attached to key records
+- Review a per-car unified service and ownership history
 
 ## Core Principles
 1. Ledger-centric finance model
@@ -75,6 +77,9 @@ Primary outcomes:
   - If cost is empty/0, linked ledger entry is removed
 - Reminder logic in module:
   - Overdue or due soon by date and/or odometer thresholds
+- Attachments:
+  - JPG, PNG, PDF documents can be uploaded to maintenance records
+  - Attachments are shown in the record modal and flagged in list/history views
 
 ### 5. Expenses (manual)
 - Records: category, amount, date, odometer, vendor, tags, notes
@@ -82,6 +87,9 @@ Primary outcomes:
   - Creates/updates linked expense ledger entry (`source_type=expense`)
   - Account selected by category->account mapping
 - Categories are managed in-app (create/edit category names)
+- Attachments:
+  - JPG, PNG, PDF documents can be uploaded to expense records
+  - Attachments are shown in the record modal and flagged in list/history views
 
 ### 6. Reimbursements
 - Records: reimbursed date, amount, account/type, notes
@@ -100,6 +108,9 @@ Primary outcomes:
   - Scheduled daily in `routes/console.php`
 - Dev convenience:
   - Recurring page includes a temporary button to run due generation immediately
+- Management controls:
+  - `Skip Next Occurrence` advances the schedule by one cadence interval without posting
+  - `Upcoming Preview` shows the next few projected dates based on cadence and optional end date
 
 ### 8. Dashboard
 - Running headline totals:
@@ -156,6 +167,35 @@ Primary outcomes:
   - category totals
   - fuel spend, volume, average price, and average efficiency
 
+### 11. Obligations
+- Dedicated obligations page for insurance, tax/registration, and MOT/inspection
+- Records: car, type, provider, reference, start date, due date, renewal cost, notes, active flag
+- Ledger sync:
+  - Creates/updates linked expense ledger entry (`source_type=vehicle_obligation`) when amount > 0
+  - Removes linked ledger row if amount is cleared
+- Renewal workflow:
+  - `Renew for Next Year` marks the current obligation complete and creates the next annual record
+- Attachments:
+  - JPG, PNG, PDF documents can be uploaded to obligation records
+  - Attachments are shown in the record modal and flagged in list/history views
+
+### 12. History
+- Dedicated history page at `/history`
+- Purpose:
+  - show a unified per-car timeline across operational and financial events
+- Current event sources:
+  - fuel logs
+  - manual expenses
+  - maintenance records
+  - obligations
+  - reimbursements
+- Filters:
+  - car
+  - event type
+- Interaction:
+  - row/card click opens summary modal
+  - modal shows event details, attachment links where applicable, and link out to the source page for editing
+
 ## UI/UX Conventions (Current)
 - Date display standard in app tables/views: `dd-mm-yyyy`
 - List views use simplified sheet-style tables
@@ -171,6 +211,9 @@ Primary outcomes:
   - Expenses, Fuel, Reimbursements, Recurring: click row to open modal edit
   - Quick Actions list: click row to open modal edit
   - Dashboard service/recurring due rows: click row to open modal edit/delete
+  - History rows/cards: click row to open summary modal
+- Attachment indicators:
+  - Expenses, Maintenance, Obligations, and History display `Docs attached` when records have stored documents
 - Modal conventions:
   - Close control in top-right
   - Save/edit actions left-aligned in footer area
@@ -214,7 +257,9 @@ This standard is now the default expectation for all new list-style features unl
 - `maintenance_records` (linked by unique nullable `ledger_entry_id`)
 - `expenses` (linked by unique nullable `ledger_entry_id`)
 - `reimbursements` (linked by unique nullable `ledger_entry_id`)
+- `vehicle_obligations` (linked by unique nullable `ledger_entry_id`)
 - `recurring_transactions`
+- `attachments` (polymorphic, user-owned, private file serving)
 - `cars` (includes `current_odometer`, `is_default`, `is_archived`)
 - `accounts`
 - `expense_categories`
@@ -226,12 +271,14 @@ This standard is now the default expectation for all new list-style features unl
 1. Ledger is the financial source of truth.
 2. Source records keep a 1:1 link to their ledger entry when monetized.
 3. Deleting a monetized source record removes its linked ledger entry.
-4. Fuel logs always require a cost amount and post expense ledger rows.
-5. Maintenance only posts ledger when cost > 0.
-6. Maintenance due checks support either condition:
+4. Deleting an attachment removes both the DB record and the stored file.
+5. Fuel logs always require a cost amount and post expense ledger rows.
+6. Maintenance only posts ledger when cost > 0.
+7. Maintenance due checks support either condition:
 - Due date within 14-day window
 - Odometer within 500 units of next due odometer (or past it)
-7. Dashboard net cost semantics:
+8. Recurring skip control advances `next_entry_date` by cadence without generating a ledger row.
+9. Dashboard net cost semantics:
 - Net cost = expenses - reimbursements
 - Negative net implies surplus/reimbursement exceeds spend
 
@@ -244,7 +291,9 @@ This standard is now the default expectation for all new list-style features unl
 ## Routing Map (Authenticated)
 - `/dashboard`
 - `/reports`
+- `/history`
 - `/cars`
+- `/obligations`
 - `/fuel`
 - `/maintenance`
 - `/expenses`
@@ -258,6 +307,10 @@ This standard is now the default expectation for all new list-style features unl
   - Fuel CRUD and odometer sync
   - Expenses CRUD and ledger sync
   - Reimbursements CRUD and ledger sync
+  - Obligations CRUD and renewal workflow
+  - Attachment access and upload flows
+  - History page filtering and merged event output
+  - Recurring skip and preview controls
   - Recurring CRUD and generation command
   - Reports page summary/category/fuel outputs
   - Appearance/theme preference updates

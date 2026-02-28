@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Account;
+use App\Models\Attachment;
 use App\Models\LedgerEntry;
 use App\Models\VehicleObligation;
+use App\Support\AttachmentManager;
 use App\Support\CurrencyFormatter;
 use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
@@ -12,11 +14,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new class extends Component {
+    use WithFileUploads;
+
     public bool $showForm = false;
     public ?int $editingObligationId = null;
     public string $filterStatus = 'active';
+    public array $newAttachments = [];
 
     /**
      * @var array<string, string>
@@ -83,7 +89,11 @@ new class extends Component {
 
     public function saveObligation(): void
     {
-        $form = $this->validate($this->rules(), $this->messages())['form'];
+        $validated = $this->validate(
+            array_merge($this->rules(), $this->attachmentRules()),
+            array_merge($this->messages(), $this->attachmentMessages()),
+        );
+        $form = $validated['form'];
         $normalized = $this->normalizeObligationAttributes($form);
         $attributes = $normalized['attributes'];
         $amount = $normalized['amount'];
@@ -97,6 +107,7 @@ new class extends Component {
             }
 
             $this->syncLedgerEntry($obligation, $amount);
+            app(AttachmentManager::class)->storeMany($obligation, $this->newAttachments);
         });
 
         $this->cancelForm();
@@ -156,7 +167,22 @@ new class extends Component {
     {
         $this->showForm = false;
         $this->editingObligationId = null;
+        $this->newAttachments = [];
         $this->resetForm();
+    }
+
+    public function deleteAttachment(int $attachmentId): void
+    {
+        if ($this->editingObligationId === null) {
+            return;
+        }
+
+        $obligation = Auth::user()->vehicleObligations()->with('attachments')->findOrFail($this->editingObligationId);
+        $attachment = $obligation->attachments()->findOrFail($attachmentId);
+
+        app(AttachmentManager::class)->delete($attachment);
+
+        unset($this->editingAttachments);
     }
 
     public function obligationTypeLabel(string $obligationType): string
@@ -200,7 +226,7 @@ new class extends Component {
     public function obligations(): Collection
     {
         $obligations = Auth::user()->vehicleObligations()
-            ->with(['car', 'ledgerEntry'])
+            ->with(['car', 'ledgerEntry', 'attachments'])
             ->orderBy('due_date')
             ->orderBy('id')
             ->get();
@@ -236,6 +262,22 @@ new class extends Component {
         ];
     }
 
+    #[Computed]
+    public function editingAttachments(): Collection
+    {
+        if ($this->editingObligationId === null) {
+            return new Collection();
+        }
+
+        return Auth::user()
+            ->vehicleObligations()
+            ->with('attachments')
+            ->findOrFail($this->editingObligationId)
+            ->attachments
+            ->sortByDesc('id')
+            ->values();
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -267,6 +309,28 @@ new class extends Component {
             'form.car_id.required' => 'Please select a car.',
             'form.obligation_type.required' => 'Please select an obligation type.',
             'form.due_date.required' => 'The due date is required.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function attachmentRules(): array
+    {
+        return [
+            'newAttachments' => ['nullable', 'array'],
+            'newAttachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function attachmentMessages(): array
+    {
+        return [
+            'newAttachments.*.mimes' => 'Attachments must be JPG, PNG, or PDF files.',
+            'newAttachments.*.max' => 'Attachments must be 10MB or smaller.',
         ];
     }
 
@@ -433,6 +497,73 @@ new class extends Component {
 
                     <flux:textarea wire:model="form.notes" :label="__('Notes')" rows="4" />
 
+                    <div class="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                        <div>
+                            <flux:heading size="sm">{{ __('Attachments') }}</flux:heading>
+                            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Add policy documents, MOT paperwork, or renewal receipts.') }}</flux:text>
+                        </div>
+
+                        <flux:input wire:model="newAttachments" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" />
+
+                        <div class="space-y-2">
+                            <div wire:loading wire:target="newAttachments" class="text-sm text-zinc-500 dark:text-zinc-400">
+                                {{ __('Uploading selected files...') }}
+                            </div>
+
+                            @if ($newAttachments !== [])
+                                <div class="space-y-2">
+                                    @foreach ($newAttachments as $upload)
+                                        <div class="flex items-center justify-between rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600">
+                                            <span class="truncate">{{ $upload->getClientOriginalName() }}</span>
+                                            <span class="text-zinc-500 dark:text-zinc-400">{{ __('Ready to save') }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            @if ($editingObligationId !== null)
+                                @if ($this->editingAttachments->isEmpty())
+                                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No saved attachments yet.') }}</flux:text>
+                                @else
+                                    <div class="space-y-2">
+                                        @foreach ($this->editingAttachments as $attachment)
+                                            <div class="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700">
+                                                <div class="min-w-0">
+                                                    <div class="truncate font-medium text-zinc-800 dark:text-zinc-100">{{ $attachment->original_name }}</div>
+                                                    <div class="text-zinc-500 dark:text-zinc-400">
+                                                        {{ strtoupper($attachment->isPreviewableImage() ? 'Image' : 'PDF') }}
+                                                        ·
+                                                        {{ number_format($attachment->size / 1024, 1) }} KB
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex items-center gap-2">
+                                                    <a
+                                                        href="{{ route('attachments.show', $attachment) }}"
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        class="inline-flex items-center rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                                    >
+                                                        {{ __('Open') }}
+                                                    </a>
+                                                    <flux:button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        class="text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
+                                                        wire:click="deleteAttachment({{ $attachment->id }})"
+                                                    >
+                                                        {{ __('Delete') }}
+                                                    </flux:button>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
+
                     <flux:checkbox wire:model="form.is_active" :label="__('Active')" />
 
                     <div class="flex items-center justify-between gap-3 pt-2">
@@ -516,6 +647,9 @@ new class extends Component {
                             <div>
                                 <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $this->obligationTypeLabel($obligation->obligation_type) }}</div>
                                 <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ trim(collect([$obligation->car?->year, $obligation->car?->make, $obligation->car?->model])->filter()->implode(' ')) }}</div>
+                                @if ($obligation->attachments->isNotEmpty())
+                                    <div class="text-xs text-sky-700 dark:text-sky-300">{{ __('Docs attached') }}</div>
+                                @endif
                             </div>
                             <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-medium {{ $this->obligationStatusClasses($obligation) }}">{{ $this->obligationStatusLabel($obligation) }}</span>
                         </div>
@@ -560,7 +694,12 @@ new class extends Component {
                                 wire:click="editObligation({{ $obligation->id }})"
                                 class="cursor-pointer border-t border-zinc-200 transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900/70"
                             >
-                                <td class="px-3 py-2">{{ $this->obligationTypeLabel($obligation->obligation_type) }}</td>
+                                <td class="px-3 py-2">
+                                    <div>{{ $this->obligationTypeLabel($obligation->obligation_type) }}</div>
+                                    @if ($obligation->attachments->isNotEmpty())
+                                        <div class="text-xs text-sky-700 dark:text-sky-300">{{ __('Docs attached') }}</div>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-2">{{ $obligation->due_date->format('d-m-Y') }}</td>
                                 <td class="px-3 py-2">{{ $obligation->provider ?: '—' }}</td>
                                 <td class="px-3 py-2">{{ $obligation->reference ?: '—' }}</td>

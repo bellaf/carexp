@@ -114,6 +114,11 @@ class User extends Authenticatable
         return $this->hasMany(VehicleObligation::class);
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class);
+    }
+
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
