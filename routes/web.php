@@ -4,9 +4,13 @@ use App\Http\Controllers\ReportsController;
 use App\Models\Account;
 use App\Models\Expense;
 use App\Models\FuelLog;
+use App\Models\LedgerEntry;
 use App\Models\MaintenanceRecord;
 use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
+use App\Models\Reimbursement;
+use App\Models\VehicleObligation;
+use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +34,7 @@ Route::get('dashboard', function (Request $request) {
         'all' => 'All Transactions',
         'fuel_log' => 'Fuel',
         'maintenance_record' => 'Maintenance',
+        'vehicle_obligation' => 'Obligations',
         'expense' => 'Manual Expense',
         'reimbursement' => 'Reimbursement',
         'recurring' => 'Recurring',
@@ -204,6 +209,19 @@ Route::get('dashboard', function (Request $request) {
         ->limit(4)
         ->get();
 
+    $upcomingObligationsAll = $user->vehicleObligations()
+        ->with('car')
+        ->where('is_active', true)
+        ->orderBy('due_date')
+        ->get()
+        ->filter(fn (VehicleObligation $obligation): bool => VehicleObligationStatus::isUpcomingWithinDays($obligation, 30))
+        ->values();
+
+    $upcomingObligations = $upcomingObligationsAll
+        ->sortBy('due_date')
+        ->take(5)
+        ->values();
+
     $transactions = (clone $ledgerEntries)
         ->when($selectedTransactionType !== 'all', fn ($query) => $query->where('source_type', $selectedTransactionType))
         ->when($periodStartDate !== null, fn ($query) => $query->whereDate('entry_date', '>=', $periodStartDate))
@@ -233,6 +251,8 @@ Route::get('dashboard', function (Request $request) {
         'upcomingMaintenance' => $upcomingMaintenance,
         'upcomingRecurringCount' => (int) (clone $upcomingRecurringQuery)->count(),
         'upcomingRecurringTransactions' => $upcomingRecurringTransactions,
+        'upcomingObligationsCount' => (int) $upcomingObligationsAll->count(),
+        'upcomingObligations' => $upcomingObligations,
         'quickActions' => $quickActions,
         'totalTransactions' => (int) (clone $ledgerEntries)->count(),
         'transactions' => $transactions,
@@ -249,6 +269,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports', ReportsController::class)->name('reports.index');
     Route::livewire('users', 'pages::users.index')->name('users.index');
     Route::livewire('cars', 'pages::cars.index')->name('cars.index');
+    Route::livewire('obligations', 'pages::obligations.index')->name('obligations.index');
     Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
     Route::livewire('recurring', 'pages::recurring.index')->name('recurring.index');
     Route::livewire('quick-actions', 'pages::quick-actions.index')->name('quick-actions.index');
@@ -424,6 +445,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         return redirect()->route('dashboard');
     })->name('dashboard.maintenance.delete');
+
+    Route::delete('dashboard/ledger/{ledgerEntry}', function (Request $request, LedgerEntry $ledgerEntry) {
+        abort_unless($ledgerEntry->user_id === $request->user()->id, 403);
+
+        DB::transaction(function () use ($request, $ledgerEntry): void {
+            match ($ledgerEntry->source_type) {
+                'fuel_log' => FuelLog::query()
+                    ->where('user_id', $request->user()->id)
+                    ->whereKey($ledgerEntry->source_id)
+                    ->delete(),
+                'expense' => Expense::query()
+                    ->where('user_id', $request->user()->id)
+                    ->whereKey($ledgerEntry->source_id)
+                    ->delete(),
+                'maintenance_record' => MaintenanceRecord::query()
+                    ->where('user_id', $request->user()->id)
+                    ->whereKey($ledgerEntry->source_id)
+                    ->delete(),
+                'reimbursement' => Reimbursement::query()
+                    ->where('user_id', $request->user()->id)
+                    ->whereKey($ledgerEntry->source_id)
+                    ->delete(),
+                'vehicle_obligation' => VehicleObligation::query()
+                    ->where('user_id', $request->user()->id)
+                    ->whereKey($ledgerEntry->source_id)
+                    ->update([
+                        'ledger_entry_id' => null,
+                        'amount' => null,
+                    ]),
+                default => null,
+            };
+
+            $ledgerEntry->delete();
+        });
+
+        return redirect()->route('dashboard', $request->only(['transaction_type', 'period', 'page']));
+    })->name('dashboard.ledger.delete');
 
     Route::put('dashboard/recurring/{recurringTransaction}', function (Request $request, RecurringTransaction $recurringTransaction) {
         abort_unless($recurringTransaction->user_id === $request->user()->id, 403);

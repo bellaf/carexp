@@ -8,6 +8,7 @@ use App\Models\MaintenanceRecord;
 use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
 use App\Models\User;
+use App\Models\VehicleObligation;
 use Illuminate\Support\Facades\DB;
 
 test('guests are redirected to the login page', function () {
@@ -289,6 +290,76 @@ test('dashboard shows upcoming service and recurring indicators for next 14 days
         ->assertSee('Recurring Due (Next 14 Days)')
         ->assertSee('oil_change')
         ->assertSee('Insurance');
+});
+
+test('dashboard shows upcoming obligations due within 30 days', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'insurance',
+        'provider' => 'Admiral',
+        'due_date' => now()->addDays(10)->toDateString(),
+        'is_active' => true,
+    ]);
+
+    VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'tax',
+        'provider' => 'DVLA',
+        'due_date' => now()->addDays(45)->toDateString(),
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Delete Ledger Entry')
+        ->assertSee('Obligations Due (Next 30 Days)')
+        ->assertSee('Insurance')
+        ->assertDontSee('Tax / Registration');
+});
+
+test('dashboard ledger delete removes obligation financial entry and clears obligation link', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+    $account = Account::factory()->create([
+        'key' => 'insurance_expense',
+        'name' => 'Insurance',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $obligation = VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'insurance',
+        'amount' => 420.50,
+    ]);
+
+    $ledgerEntry = $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $account->id,
+        'entry_date' => now()->toDateString(),
+        'entry_type' => 'expense',
+        'amount' => 420.50,
+        'source_type' => 'vehicle_obligation',
+        'source_id' => $obligation->id,
+    ]);
+
+    $obligation->update(['ledger_entry_id' => $ledgerEntry->id]);
+
+    $this->actingAs($user)
+        ->delete(route('dashboard.ledger.delete', $ledgerEntry))
+        ->assertRedirect(route('dashboard'));
+
+    $this->assertDatabaseMissing('ledger_entries', ['id' => $ledgerEntry->id]);
+    $this->assertDatabaseHas('vehicle_obligations', [
+        'id' => $obligation->id,
+        'ledger_entry_id' => null,
+        'amount' => null,
+    ]);
 });
 
 test('service due indicator is based on maintenance due dates, not recurring schedules', function () {

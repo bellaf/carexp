@@ -39,6 +39,9 @@
                 <flux:navbar.item icon="wrench-screwdriver" :href="route('maintenance.index')" :current="request()->routeIs('maintenance.*')" wire:navigate>
                     {{ __('Maintenance') }}
                 </flux:navbar.item>
+                <flux:navbar.item icon="document-text" :href="route('obligations.index')" :current="request()->routeIs('obligations.*')" wire:navigate>
+                    {{ __('Obligations') }}
+                </flux:navbar.item>
                 <flux:navbar.item icon="wallet" :href="route('reimbursements.index')" :current="request()->routeIs('reimbursements.*')" wire:navigate>
                     {{ __('Reimbursements') }}
                 </flux:navbar.item>
@@ -87,6 +90,9 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="wrench-screwdriver" :href="route('maintenance.index')" :current="request()->routeIs('maintenance.*')" wire:navigate>
                         {{ __('Maintenance') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="document-text" :href="route('obligations.index')" :current="request()->routeIs('obligations.*')" wire:navigate>
+                        {{ __('Obligations') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="wallet" :href="route('reimbursements.index')" :current="request()->routeIs('reimbursements.*')" wire:navigate>
                         {{ __('Reimbursements') }}

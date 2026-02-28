@@ -85,4 +85,9 @@ class Car extends Model
     {
         return $this->hasMany(QuickAction::class);
     }
+
+    public function vehicleObligations(): HasMany
+    {
+        return $this->hasMany(VehicleObligation::class);
+    }
 }

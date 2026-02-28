@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\FuelLog;
 use App\Models\LedgerEntry;
 use App\Models\User;
+use App\Models\VehicleObligation;
 use App\Support\CurrencyFormatter;
+use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -22,6 +24,7 @@ class ReportsController extends Controller
             'summary' => 'Summary',
             'category' => 'Category Breakdown',
             'fuel' => 'Fuel Analysis',
+            'obligations' => 'Obligations',
         ];
 
         $periodOptions = [
@@ -60,6 +63,7 @@ class ReportsController extends Controller
 
         $ledgerEntries = $this->filteredLedgerEntries($user, $selectedCarId, $startDate, $endDate);
         $fuelLogs = $this->filteredFuelLogs($user, $selectedCarId, $startDate, $endDate);
+        $vehicleObligations = $this->filteredVehicleObligations($user, $selectedCarId, $startDate, $endDate);
 
         return view('reports', [
             'cars' => $cars,
@@ -77,6 +81,8 @@ class ReportsController extends Controller
             'monthlyRows' => $this->monthlyLedgerTrend($ledgerEntries, $user->preferred_currency),
             'fuelSummary' => $this->fuelSummary($fuelLogs, $user->preferred_currency),
             'fuelMonthlyRows' => $this->fuelMonthlyTrend($fuelLogs, $user->preferred_currency),
+            'obligationSummary' => $this->obligationSummary($vehicleObligations, $user->preferred_currency),
+            'obligationRows' => $this->obligationRows($vehicleObligations, $user->preferred_currency),
         ]);
     }
 
@@ -114,6 +120,18 @@ class ReportsController extends Controller
             ->when($startDate !== null, fn ($query) => $query->whereDate('log_date', '>=', $startDate->toDateString()))
             ->when($endDate !== null, fn ($query) => $query->whereDate('log_date', '<=', $endDate->toDateString()))
             ->orderBy('log_date')
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function filteredVehicleObligations(User $user, ?int $carId, ?CarbonImmutable $startDate, ?CarbonImmutable $endDate): Collection
+    {
+        return $user->vehicleObligations()
+            ->with(['car', 'ledgerEntry'])
+            ->when($carId !== null, fn ($query) => $query->where('car_id', $carId))
+            ->when($startDate !== null, fn ($query) => $query->whereDate('due_date', '>=', $startDate->toDateString()))
+            ->when($endDate !== null, fn ($query) => $query->whereDate('due_date', '<=', $endDate->toDateString()))
+            ->orderBy('due_date')
             ->orderBy('id')
             ->get();
     }
@@ -219,6 +237,54 @@ class ReportsController extends Controller
                 ];
             })
             ->sortKeysDesc()
+            ->values();
+    }
+
+    /**
+     * @return array<string, string|int>
+     */
+    private function obligationSummary(Collection $vehicleObligations, string $currencyCode): array
+    {
+        $overdueCount = $vehicleObligations
+            ->filter(fn (VehicleObligation $obligation): bool => VehicleObligationStatus::status($obligation) === 'overdue')
+            ->count();
+
+        $dueSoonCount = $vehicleObligations
+            ->filter(fn (VehicleObligation $obligation): bool => VehicleObligationStatus::status($obligation) === 'due_soon')
+            ->count();
+
+        $activeCount = $vehicleObligations->where('is_active', true)->count();
+        $totalCost = (float) $vehicleObligations->sum('amount');
+
+        return [
+            'active_count' => $activeCount,
+            'due_soon_count' => $dueSoonCount,
+            'overdue_count' => $overdueCount,
+            'total_cost' => CurrencyFormatter::format($totalCost, $currencyCode),
+        ];
+    }
+
+    private function obligationRows(Collection $vehicleObligations, string $currencyCode): Collection
+    {
+        return $vehicleObligations
+            ->map(function (VehicleObligation $obligation) use ($currencyCode): array {
+                $typeLabel = match ($obligation->obligation_type) {
+                    'insurance' => 'Insurance',
+                    'tax' => 'Tax / Registration',
+                    default => 'MOT / Inspection',
+                };
+
+                return [
+                    'type' => $typeLabel,
+                    'car' => trim(collect([$obligation->car?->year, $obligation->car?->make, $obligation->car?->model])->filter()->implode(' ')) ?: 'N/A',
+                    'due_date' => $obligation->due_date->format('d-m-Y'),
+                    'provider' => $obligation->provider ?: 'N/A',
+                    'reference' => $obligation->reference ?: 'N/A',
+                    'cost' => CurrencyFormatter::format($obligation->amount, $currencyCode),
+                    'status' => VehicleObligationStatus::label($obligation),
+                    'status_key' => VehicleObligationStatus::status($obligation),
+                ];
+            })
             ->values();
     }
 }

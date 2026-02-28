@@ -5,6 +5,7 @@ use App\Models\Car;
 use App\Models\FuelLog;
 use App\Models\LedgerEntry;
 use App\Models\User;
+use App\Models\VehicleObligation;
 
 test('guests are redirected to login from reports page', function () {
     $this->get(route('reports.index'))
@@ -126,4 +127,33 @@ test('fuel report shows fuel metrics from fuel logs', function () {
         ->assertSee('45.00')
         ->assertSee('30.000')
         ->assertSee('33.300');
+});
+
+test('obligations report shows due items by period', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'insurance',
+        'provider' => 'Admiral',
+        'due_date' => now()->startOfMonth()->addDays(5)->toDateString(),
+        'amount' => 420,
+    ]);
+
+    VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'tax',
+        'provider' => 'DVLA',
+        'due_date' => now()->subMonthNoOverflow()->startOfMonth()->addDays(5)->toDateString(),
+        'amount' => 190,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('reports.index', ['report' => 'obligations', 'period' => 'this_month']))
+        ->assertOk()
+        ->assertSee('Obligation Schedule')
+        ->assertSee('Insurance')
+        ->assertSee('Admiral')
+        ->assertDontSee('DVLA');
 });
