@@ -8,6 +8,7 @@ use App\Models\MaintenanceRecord;
 use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
 use App\Models\User;
+use App\Models\VehicleObligation;
 use Illuminate\Support\Facades\DB;
 
 test('guests are redirected to the login page', function () {
@@ -77,6 +78,124 @@ test('dashboard shows running totals from ledger entries', function () {
         ->assertSee('200.00')
         ->assertSee('80.00')
         ->assertSee('120.00');
+});
+
+test('dashboard shows current car ownership cost metrics', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+    ]);
+    $car = Car::factory()->for($user)->create([
+        'is_default' => true,
+        'purchase_odometer' => 10000,
+        'current_odometer' => 12000,
+    ]);
+
+    $fuelAccount = Account::factory()->create([
+        'key' => 'fuel_expense',
+        'name' => 'Fuel',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $maintenanceAccount = Account::factory()->create([
+        'key' => 'maintenance_expense',
+        'name' => 'Maintenance',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $incomeAccount = Account::factory()->create([
+        'key' => 'company_car_allowance_income',
+        'name' => 'Company Car Allowance',
+        'group' => 'income',
+        'is_system' => true,
+    ]);
+
+    $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $fuelAccount->id,
+        'entry_date' => now()->toDateString(),
+        'entry_type' => 'expense',
+        'amount' => 200,
+        'source_type' => 'fuel_log',
+        'source_id' => 1,
+    ]);
+
+    $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $maintenanceAccount->id,
+        'entry_date' => now()->toDateString(),
+        'entry_type' => 'expense',
+        'amount' => 100,
+        'source_type' => 'maintenance_record',
+        'source_id' => 1,
+    ]);
+
+    $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $incomeAccount->id,
+        'entry_date' => now()->toDateString(),
+        'entry_type' => 'income',
+        'amount' => 50,
+        'source_type' => 'reimbursement',
+        'source_id' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Current Car Ownership Metrics')
+        ->assertSee('2,000 mi')
+        ->assertSee('$0.13/mi')
+        ->assertSee('$0.10/mi')
+        ->assertSee('$0.05/mi')
+        ->assertSee('Total Ownership Cost / mi');
+});
+
+test('dashboard ownership metrics fall back to recorded odometer history when purchase odometer is missing', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+    ]);
+    $car = Car::factory()->for($user)->create([
+        'is_default' => true,
+        'purchase_odometer' => null,
+        'current_odometer' => 12000,
+    ]);
+
+    $fuelAccount = Account::factory()->create([
+        'key' => 'fuel_expense',
+        'name' => 'Fuel',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $ledgerEntry = $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $fuelAccount->id,
+        'entry_date' => now()->subMonths(2)->toDateString(),
+        'entry_type' => 'expense',
+        'amount' => 120,
+        'source_type' => 'fuel_log',
+        'source_id' => 1,
+    ]);
+
+    \App\Models\FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'ledger_entry_id' => $ledgerEntry->id,
+        'log_date' => now()->subMonths(2)->toDateString(),
+        'odometer' => 10000,
+        'volume' => 20,
+        'volume_unit' => 'liters',
+        'price_per_unit' => 1.2,
+        'full_tank' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Current Car Ownership Metrics')
+        ->assertSee('2,000 mi')
+        ->assertSee('$0.06/mi');
 });
 
 test('dashboard transaction type filter narrows table rows', function () {
@@ -289,6 +408,76 @@ test('dashboard shows upcoming service and recurring indicators for next 14 days
         ->assertSee('Recurring Due (Next 14 Days)')
         ->assertSee('oil_change')
         ->assertSee('Insurance');
+});
+
+test('dashboard shows upcoming obligations due within 30 days', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'insurance',
+        'provider' => 'Admiral',
+        'due_date' => now()->addDays(10)->toDateString(),
+        'is_active' => true,
+    ]);
+
+    VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'tax',
+        'provider' => 'DVLA',
+        'due_date' => now()->addDays(45)->toDateString(),
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Delete Ledger Entry')
+        ->assertSee('Obligations Due (Next 30 Days)')
+        ->assertSee('Insurance')
+        ->assertDontSee('Tax / Registration');
+});
+
+test('dashboard ledger delete removes obligation financial entry and clears obligation link', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+    $account = Account::factory()->create([
+        'key' => 'insurance_expense',
+        'name' => 'Insurance',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $obligation = VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'insurance',
+        'amount' => 420.50,
+    ]);
+
+    $ledgerEntry = $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $account->id,
+        'entry_date' => now()->toDateString(),
+        'entry_type' => 'expense',
+        'amount' => 420.50,
+        'source_type' => 'vehicle_obligation',
+        'source_id' => $obligation->id,
+    ]);
+
+    $obligation->update(['ledger_entry_id' => $ledgerEntry->id]);
+
+    $this->actingAs($user)
+        ->delete(route('dashboard.ledger.delete', $ledgerEntry))
+        ->assertRedirect(route('dashboard'));
+
+    $this->assertDatabaseMissing('ledger_entries', ['id' => $ledgerEntry->id]);
+    $this->assertDatabaseHas('vehicle_obligations', [
+        'id' => $obligation->id,
+        'ledger_entry_id' => null,
+        'amount' => null,
+    ]);
 });
 
 test('service due indicator is based on maintenance due dates, not recurring schedules', function () {

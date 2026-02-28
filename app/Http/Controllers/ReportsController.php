@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\FuelLog;
 use App\Models\LedgerEntry;
 use App\Models\User;
+use App\Models\VehicleObligation;
 use App\Support\CurrencyFormatter;
+use App\Support\OwnershipCostMetrics;
+use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -22,6 +25,8 @@ class ReportsController extends Controller
             'summary' => 'Summary',
             'category' => 'Category Breakdown',
             'fuel' => 'Fuel Analysis',
+            'obligations' => 'Obligations',
+            'ownership' => 'Ownership Metrics',
         ];
 
         $periodOptions = [
@@ -56,10 +61,13 @@ class ReportsController extends Controller
             $selectedCarId = null;
         }
 
-        [$startDate, $endDate] = $this->resolveDateRange($selectedPeriod, $selectedYear);
+        [$startDate, $endDate] = $selectedReport === 'ownership'
+            ? [null, null]
+            : $this->resolveDateRange($selectedPeriod, $selectedYear);
 
         $ledgerEntries = $this->filteredLedgerEntries($user, $selectedCarId, $startDate, $endDate);
         $fuelLogs = $this->filteredFuelLogs($user, $selectedCarId, $startDate, $endDate);
+        $vehicleObligations = $this->filteredVehicleObligations($user, $selectedCarId, $startDate, $endDate);
 
         return view('reports', [
             'cars' => $cars,
@@ -77,6 +85,9 @@ class ReportsController extends Controller
             'monthlyRows' => $this->monthlyLedgerTrend($ledgerEntries, $user->preferred_currency),
             'fuelSummary' => $this->fuelSummary($fuelLogs, $user->preferred_currency),
             'fuelMonthlyRows' => $this->fuelMonthlyTrend($fuelLogs, $user->preferred_currency),
+            'obligationSummary' => $this->obligationSummary($vehicleObligations, $user->preferred_currency),
+            'obligationRows' => $this->obligationRows($vehicleObligations, $user->preferred_currency),
+            'ownershipRows' => $this->ownershipRows($cars, $selectedCarId, $user->preferred_currency, $user->measurement_system),
         ]);
     }
 
@@ -114,6 +125,18 @@ class ReportsController extends Controller
             ->when($startDate !== null, fn ($query) => $query->whereDate('log_date', '>=', $startDate->toDateString()))
             ->when($endDate !== null, fn ($query) => $query->whereDate('log_date', '<=', $endDate->toDateString()))
             ->orderBy('log_date')
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function filteredVehicleObligations(User $user, ?int $carId, ?CarbonImmutable $startDate, ?CarbonImmutable $endDate): Collection
+    {
+        return $user->vehicleObligations()
+            ->with(['car', 'ledgerEntry'])
+            ->when($carId !== null, fn ($query) => $query->where('car_id', $carId))
+            ->when($startDate !== null, fn ($query) => $query->whereDate('due_date', '>=', $startDate->toDateString()))
+            ->when($endDate !== null, fn ($query) => $query->whereDate('due_date', '<=', $endDate->toDateString()))
+            ->orderBy('due_date')
             ->orderBy('id')
             ->get();
     }
@@ -219,6 +242,81 @@ class ReportsController extends Controller
                 ];
             })
             ->sortKeysDesc()
+            ->values();
+    }
+
+    /**
+     * @return array<string, string|int>
+     */
+    private function obligationSummary(Collection $vehicleObligations, string $currencyCode): array
+    {
+        $overdueCount = $vehicleObligations
+            ->filter(fn (VehicleObligation $obligation): bool => VehicleObligationStatus::status($obligation) === 'overdue')
+            ->count();
+
+        $dueSoonCount = $vehicleObligations
+            ->filter(fn (VehicleObligation $obligation): bool => VehicleObligationStatus::status($obligation) === 'due_soon')
+            ->count();
+
+        $activeCount = $vehicleObligations->where('is_active', true)->count();
+        $totalCost = (float) $vehicleObligations->sum('amount');
+
+        return [
+            'active_count' => $activeCount,
+            'due_soon_count' => $dueSoonCount,
+            'overdue_count' => $overdueCount,
+            'total_cost' => CurrencyFormatter::format($totalCost, $currencyCode),
+        ];
+    }
+
+    private function obligationRows(Collection $vehicleObligations, string $currencyCode): Collection
+    {
+        return $vehicleObligations
+            ->map(function (VehicleObligation $obligation) use ($currencyCode): array {
+                $typeLabel = match ($obligation->obligation_type) {
+                    'insurance' => 'Insurance',
+                    'tax' => 'Tax / Registration',
+                    default => 'MOT / Inspection',
+                };
+
+                return [
+                    'type' => $typeLabel,
+                    'car' => trim(collect([$obligation->car?->year, $obligation->car?->make, $obligation->car?->model])->filter()->implode(' ')) ?: 'N/A',
+                    'due_date' => $obligation->due_date->format('d-m-Y'),
+                    'provider' => $obligation->provider ?: 'N/A',
+                    'reference' => $obligation->reference ?: 'N/A',
+                    'cost' => CurrencyFormatter::format($obligation->amount, $currencyCode),
+                    'status' => VehicleObligationStatus::label($obligation),
+                    'status_key' => VehicleObligationStatus::status($obligation),
+                ];
+            })
+            ->values();
+    }
+
+    private function ownershipRows(Collection $cars, ?int $selectedCarId, string $currencyCode, string $measurementSystem): Collection
+    {
+        return $cars
+            ->when($selectedCarId !== null, fn (Collection $collection): Collection => $collection->where('id', $selectedCarId)->values())
+            ->map(function ($car) use ($currencyCode, $measurementSystem): array {
+                $ledgerEntries = $car->ledgerEntries()->with('account')->get();
+                $metrics = OwnershipCostMetrics::forCar($car, $ledgerEntries, $currencyCode, $measurementSystem);
+
+                return [
+                    'car' => trim(collect([$car->year, $car->make, $car->model])->filter()->implode(' ')) ?: 'N/A',
+                    'status' => $car->sale_date !== null ? 'Sold' : 'Owned',
+                    'distance' => $metrics['distance_display'],
+                    'purchase_price' => CurrencyFormatter::format($metrics['purchase_price_value'], $currencyCode),
+                    'sale_price' => $car->sale_date !== null ? CurrencyFormatter::format($metrics['sale_price_value'], $currencyCode) : 'N/A',
+                    'expense_total' => CurrencyFormatter::format($metrics['expense_total_value'], $currencyCode),
+                    'income_total' => CurrencyFormatter::format($metrics['income_total_value'], $currencyCode),
+                    'net_cost' => CurrencyFormatter::format($metrics['net_cost_value'], $currencyCode),
+                    'total_ownership_cost' => CurrencyFormatter::format($metrics['total_ownership_cost_value'], $currencyCode),
+                    'net_cost_per_distance' => $metrics['net_cost_per_distance_display'],
+                    'fuel_cost_per_distance' => $metrics['fuel_cost_per_distance_display'],
+                    'maintenance_cost_per_distance' => $metrics['maintenance_cost_per_distance_display'],
+                    'total_ownership_cost_per_distance' => $metrics['total_ownership_cost_per_distance_display'],
+                ];
+            })
             ->values();
     }
 }

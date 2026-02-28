@@ -109,6 +109,11 @@ class User extends Authenticatable
         return $this->hasMany(QuickAction::class);
     }
 
+    public function vehicleObligations(): HasMany
+    {
+        return $this->hasMany(VehicleObligation::class);
+    }
+
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');

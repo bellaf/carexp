@@ -19,6 +19,7 @@ class AccountSeeder extends Seeder
             ['key' => 'tires_expense', 'name' => 'Tires', 'group' => 'expense'],
             ['key' => 'insurance_expense', 'name' => 'Insurance', 'group' => 'expense'],
             ['key' => 'tax_registration_expense', 'name' => 'Tax/Registration', 'group' => 'expense'],
+            ['key' => 'inspection_mot_expense', 'name' => 'MOT/Inspection', 'group' => 'expense'],
             ['key' => 'parking_expense', 'name' => 'Parking', 'group' => 'expense'],
             ['key' => 'tolls_expense', 'name' => 'Tolls', 'group' => 'expense'],
             ['key' => 'cleaning_expense', 'name' => 'Cleaning', 'group' => 'expense'],

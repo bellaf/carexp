@@ -130,6 +130,40 @@
             </div>
 
             <flux:card class="space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                    <flux:heading>{{ __('Current Car Ownership Metrics') }}</flux:heading>
+                    <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('All-time running costs based on purchase to current odometer.') }}</flux:text>
+                </div>
+
+                @if ($currentCar === null || $currentCarOwnershipMetrics === null)
+                    <flux:text>{{ __('Set a current car to view ownership metrics.') }}</flux:text>
+                @else
+                    <div class="grid gap-4 md:grid-cols-5">
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Distance Travelled') }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['distance_display'] }}</flux:heading>
+                        </flux:card>
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Net Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['net_cost_per_distance_display'] }}</flux:heading>
+                        </flux:card>
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Fuel Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['fuel_cost_per_distance_display'] }}</flux:heading>
+                        </flux:card>
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Maintenance Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['maintenance_cost_per_distance_display'] }}</flux:heading>
+                        </flux:card>
+                        <flux:card class="space-y-1">
+                            <flux:text>{{ __('Total Ownership Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
+                            <flux:heading>{{ $currentCarOwnershipMetrics['total_ownership_cost_per_distance_display'] }}</flux:heading>
+                        </flux:card>
+                    </div>
+                @endif
+            </flux:card>
+
+            <flux:card class="space-y-3">
                 <flux:heading>{{ __('Financial Summary') }}</flux:heading>
                 <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
                     {{ __('Expenses are shown in red, reimbursements in green, and net values are green when in surplus (negative).') }}
@@ -222,7 +256,7 @@
                 </div>
             </flux:card>
 
-            <div class="grid gap-4 lg:grid-cols-2">
+            <div class="grid gap-4 xl:grid-cols-3">
                 <flux:card class="space-y-3">
                     <div class="flex items-center justify-between gap-3">
                         <flux:heading>{{ __('Service Due (Next 14 Days)') }}</flux:heading>
@@ -441,6 +475,60 @@
                                     @endforeach
                                 </tbody>
                             </table>
+                        </div>
+                    @endif
+                </flux:card>
+
+                <flux:card class="space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <flux:heading>{{ __('Obligations Due (Next 30 Days)') }}</flux:heading>
+                        <flux:badge>{{ $upcomingObligationsCount }}</flux:badge>
+                    </div>
+
+                    @if ($upcomingObligations->isEmpty())
+                        <flux:text>{{ __('No obligations due in the next 30 days.') }}</flux:text>
+                    @else
+                        <div class="space-y-3">
+                            @foreach ($upcomingObligations as $obligation)
+                                @php
+                                    $statusLabel = \App\Support\VehicleObligationStatus::label($obligation);
+                                    $statusClasses = match (\App\Support\VehicleObligationStatus::status($obligation)) {
+                                        'overdue' => 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300',
+                                        'due_soon' => 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300',
+                                        default => 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300',
+                                    };
+                                    $typeLabel = match ($obligation->obligation_type) {
+                                        'insurance' => __('Insurance'),
+                                        'tax' => __('Tax / Registration'),
+                                        default => __('MOT / Inspection'),
+                                    };
+                                @endphp
+                                <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="font-medium">{{ $typeLabel }}</div>
+                                            <div class="text-sm text-zinc-500 dark:text-zinc-400">
+                                                {{ trim(collect([$obligation->car?->year, $obligation->car?->make, $obligation->car?->model])->filter()->implode(' ')) ?: __('N/A') }}
+                                            </div>
+                                        </div>
+                                        <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-medium {{ $statusClasses }}">{{ $statusLabel }}</span>
+                                    </div>
+                                    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                        <div>
+                                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Due Date') }}</dt>
+                                            <dd>{{ $obligation->due_date->format('d-m-Y') }}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Cost') }}</dt>
+                                            <dd>{{ \App\Support\CurrencyFormatter::format($obligation->amount, $currencyCode) }}</dd>
+                                        </div>
+                                    </dl>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="pt-1">
+                            <flux:button variant="ghost" :href="route('obligations.index')" wire:navigate>{{ __('Manage Obligations') }}</flux:button>
                         </div>
                     @endif
                 </flux:card>
@@ -671,6 +759,7 @@
                                 $typeLabel = match ($entry->source_type) {
                                     'fuel_log' => 'Fuel',
                                     'maintenance_record' => 'Maintenance',
+                                    'vehicle_obligation' => 'Obligation',
                                     'reimbursement' => 'Reimbursement',
                                     'expense' => 'Manual Expense',
                                     'recurring' => 'Recurring',
@@ -678,6 +767,7 @@
                                 };
                                 $description = $entry->reference ?: ($entry->notes ?: '');
                                 $entrySummary = [
+                                    'id' => $entry->id,
                                     'date' => $entry->entry_date->format('d-m-Y'),
                                     'type' => __($typeLabel),
                                     'account' => $entry->account?->name ?? __('N/A'),
@@ -686,6 +776,7 @@
                                     'income' => $entry->entry_type === 'income' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-',
                                     'entry_type' => $entry->entry_type,
                                     'notes' => $entry->notes ?: __('N/A'),
+                                    'delete_url' => route('dashboard.ledger.delete', $entry),
                                 ];
                             @endphp
                             <button
@@ -733,6 +824,7 @@
                                         $typeLabel = match ($entry->source_type) {
                                             'fuel_log' => 'Fuel',
                                             'maintenance_record' => 'Maintenance',
+                                            'vehicle_obligation' => 'Obligation',
                                             'reimbursement' => 'Reimbursement',
                                             'expense' => 'Manual Expense',
                                             'recurring' => 'Recurring',
@@ -740,6 +832,7 @@
                                         };
                                         $description = $entry->reference ?: ($entry->notes ?: '');
                                         $entrySummary = [
+                                            'id' => $entry->id,
                                             'date' => $entry->entry_date->format('d-m-Y'),
                                             'type' => __($typeLabel),
                                             'account' => $entry->account?->name ?? __('N/A'),
@@ -748,6 +841,7 @@
                                             'income' => $entry->entry_type === 'income' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-',
                                             'entry_type' => $entry->entry_type,
                                             'notes' => $entry->notes ?: __('N/A'),
+                                            'delete_url' => route('dashboard.ledger.delete', $entry),
                                         ];
                                     @endphp
 
@@ -801,6 +895,21 @@
                             <div><strong>{{ __('Expense') }}:</strong> <span x-text="selectedEntry?.expense"></span></div>
                             <div><strong>{{ __('Income') }}:</strong> <span x-text="selectedEntry?.income"></span></div>
                             <div><strong>{{ __('Notes') }}:</strong> <span x-text="selectedEntry?.notes"></span></div>
+                        </div>
+
+                        <div class="mt-4 flex items-center justify-between gap-3">
+                            <div></div>
+
+                            <form method="POST" x-bind:action="selectedEntry?.delete_url" onsubmit="return confirm('Delete this ledger entry only? Linked obligations will remain, but their financial posting will be removed.');">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="transaction_type" value="{{ $selectedTransactionType }}">
+                                <input type="hidden" name="period" value="{{ $selectedPeriod }}">
+                                @if (request()->has('page'))
+                                    <input type="hidden" name="page" value="{{ request('page') }}">
+                                @endif
+                                <flux:button type="submit" variant="danger">{{ __('Delete Ledger Entry') }}</flux:button>
+                            </form>
                         </div>
                     </div>
                 </div>

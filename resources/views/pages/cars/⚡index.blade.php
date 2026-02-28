@@ -2,6 +2,7 @@
 
 use App\Models\Car;
 use App\Support\CurrencyFormatter;
+use App\Support\OwnershipCostMetrics;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +59,9 @@ new class extends Component {
             'purchase_price' => $car->purchase_price !== null ? (string) $car->purchase_price : '',
             'purchase_odometer' => $car->purchase_odometer ?? '',
             'current_odometer' => $car->current_odometer ?? '',
+            'sale_date' => $car->sale_date?->format('Y-m-d') ?? '',
+            'sale_price' => $car->sale_price !== null ? (string) $car->sale_price : '',
+            'sale_odometer' => $car->sale_odometer ?? '',
         ];
 
         $this->showForm = true;
@@ -162,6 +166,16 @@ new class extends Component {
             ->get();
     }
 
+    public function ownershipMetrics(Car $car): array
+    {
+        return OwnershipCostMetrics::forCar(
+            $car,
+            $car->ledgerEntries()->with('account')->get(),
+            Auth::user()->preferred_currency,
+            Auth::user()->measurement_system,
+        );
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -185,6 +199,9 @@ new class extends Component {
             'form.purchase_price' => ['nullable', 'numeric', 'min:0'],
             'form.purchase_odometer' => ['nullable', 'integer', 'min:0'],
             'form.current_odometer' => ['nullable', 'integer', 'min:0'],
+            'form.sale_date' => ['nullable', 'date'],
+            'form.sale_price' => ['nullable', 'numeric', 'min:0'],
+            'form.sale_odometer' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -205,7 +222,7 @@ new class extends Component {
      */
     protected function normalizeCarAttributes(array $form): array
     {
-        foreach (['nickname', 'year', 'trim', 'vin', 'plate', 'fuel_type', 'purchase_date', 'purchase_price', 'purchase_odometer', 'current_odometer'] as $field) {
+        foreach (['nickname', 'year', 'trim', 'vin', 'plate', 'fuel_type', 'purchase_date', 'purchase_price', 'purchase_odometer', 'current_odometer', 'sale_date', 'sale_price', 'sale_odometer'] as $field) {
             if ($form[$field] === '') {
                 $form[$field] = null;
             }
@@ -229,6 +246,9 @@ new class extends Component {
             'purchase_price' => '',
             'purchase_odometer' => '',
             'current_odometer' => '',
+            'sale_date' => '',
+            'sale_price' => '',
+            'sale_odometer' => '',
         ];
     }
 }; ?>
@@ -266,6 +286,9 @@ new class extends Component {
                     <flux:input wire:model="form.purchase_price" :label="__('Purchase Price')" type="number" min="0" step="0.01" />
                     <flux:input wire:model="form.purchase_odometer" :label="__('Purchase Odometer')" type="number" min="0" step="1" />
                     <flux:input wire:model="form.current_odometer" :label="__('Current Odometer')" type="number" min="0" step="1" />
+                    <flux:input wire:model="form.sale_date" :label="__('Sale Date')" type="date" />
+                    <flux:input wire:model="form.sale_price" :label="__('Sale Price')" type="number" min="0" step="0.01" />
+                    <flux:input wire:model="form.sale_odometer" :label="__('Sale Odometer')" type="number" min="0" step="1" />
                 </div>
 
                 <div class="flex items-center gap-3">
@@ -288,6 +311,9 @@ new class extends Component {
         <div class="grid gap-4 lg:grid-cols-2">
             @foreach ($this->cars as $car)
                 <flux:card class="space-y-4">
+                    @php
+                        $ownershipMetrics = $this->ownershipMetrics($car);
+                    @endphp
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <flux:heading>
@@ -300,6 +326,8 @@ new class extends Component {
 
                         @if ($car->is_archived)
                             <flux:badge>{{ __('Archived') }}</flux:badge>
+                        @elseif ($car->sale_date !== null)
+                            <flux:badge color="sky">{{ __('Sold') }}</flux:badge>
                         @elseif ($car->is_default)
                             <flux:badge color="green">{{ __('Current Car') }}</flux:badge>
                         @endif
@@ -309,6 +337,21 @@ new class extends Component {
                         <flux:text>{{ __('Fuel Type') }}: {{ __($this->fuelTypeLabel($car->fuel_type)) }}</flux:text>
                         <flux:text>{{ __('Current Odometer') }}: {{ $car->current_odometer ?? __('Not set') }}</flux:text>
                         <flux:text>{{ __('Purchase Price') }}: {{ $car->purchase_price !== null ? $this->formatCurrency($car->purchase_price) : __('Not set') }}</flux:text>
+                        <flux:text>{{ __('Sale Price') }}: {{ $car->sale_price !== null ? $this->formatCurrency($car->sale_price) : __('Not sold') }}</flux:text>
+                        <flux:text>{{ __('Sale Date') }}: {{ $car->sale_date?->format('d-m-Y') ?? __('Not sold') }}</flux:text>
+                    </div>
+
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                            <flux:text>{{ __('Distance Travelled') }}</flux:text>
+                            <flux:heading size="lg">{{ $ownershipMetrics['distance_display'] }}</flux:heading>
+                            <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Running net cost / '.$ownershipMetrics['unit_label']) }}: {{ $ownershipMetrics['net_cost_per_distance_display'] }}</flux:text>
+                        </div>
+                        <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                            <flux:text>{{ __('Total Ownership Cost') }}</flux:text>
+                            <flux:heading size="lg">{{ $this->formatCurrency($ownershipMetrics['total_ownership_cost_value']) }}</flux:heading>
+                            <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Ownership cost / '.$ownershipMetrics['unit_label']) }}: {{ $ownershipMetrics['total_ownership_cost_per_distance_display'] }}</flux:text>
+                        </div>
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -316,12 +359,12 @@ new class extends Component {
                             <flux:button variant="ghost" wire:click="setDefaultCar({{ $car->id }})">{{ __('Set Current') }}</flux:button>
                         @endif
 
-                        <flux:button variant="ghost" wire:click="editCar({{ $car->id }})">{{ __('Edit') }}</flux:button>
+                        <flux:button variant="primary" wire:click="editCar({{ $car->id }})">{{ __('Edit') }}</flux:button>
 
                         @if ($car->is_archived)
                             <flux:button variant="ghost" wire:click="restoreCar({{ $car->id }})">{{ __('Restore') }}</flux:button>
                         @else
-                            <flux:button variant="danger" wire:click="archiveCar({{ $car->id }})">{{ __('Archive') }}</flux:button>
+                            <flux:button variant="ghost" wire:click="archiveCar({{ $car->id }})">{{ __('Archive') }}</flux:button>
                         @endif
                     </div>
                 </flux:card>

@@ -31,6 +31,9 @@ class CarFactory extends Factory
             'purchase_price' => $this->faker->optional()->randomFloat(2, 2000, 80000),
             'purchase_odometer' => $this->faker->optional()->numberBetween(0, 180000),
             'current_odometer' => $this->faker->optional()->numberBetween(0, 220000),
+            'sale_date' => null,
+            'sale_price' => null,
+            'sale_odometer' => null,
             'is_archived' => false,
             'is_default' => false,
         ];
