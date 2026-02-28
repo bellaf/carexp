@@ -35,6 +35,7 @@ class UserFactory extends Factory
             'preferred_currency' => 'USD',
             'measurement_system' => 'imperial',
             'volume_unit' => 'gallons',
+            'ui_theme' => 'classic',
             'timezone' => 'UTC',
         ];
     }

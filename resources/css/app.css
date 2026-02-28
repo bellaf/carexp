@@ -34,6 +34,63 @@
         --color-accent-content: var(--color-white);
         --color-accent-foreground: var(--color-neutral-800);
     }
+
+    html:not(.dark) body[data-ui-theme='warm-paper'] {
+        --color-white: #fcf8f0;
+        --color-zinc-50: #f7efe3;
+        --color-zinc-100: #efe1d0;
+        --color-zinc-200: #dcc8b1;
+        --color-zinc-300: #c9ad90;
+        --color-zinc-400: #9d826a;
+        --color-zinc-500: #7b6451;
+        --color-zinc-600: #67513f;
+        --color-zinc-700: #533f31;
+        --color-zinc-800: #433227;
+        --color-zinc-900: #2f2a26;
+        --color-neutral-100: #f7efe3;
+        --color-neutral-800: #4e6f7d;
+        --color-accent: #4e6f7d;
+        --color-accent-content: #4e6f7d;
+        --color-accent-foreground: #fff9f2;
+    }
+
+    html:not(.dark) body[data-ui-theme='soft-automotive'] {
+        --color-white: #f8fbfc;
+        --color-zinc-50: #eaf2f3;
+        --color-zinc-100: #dde9ea;
+        --color-zinc-200: #c4d7d9;
+        --color-zinc-300: #a6c0c4;
+        --color-zinc-400: #6f8e93;
+        --color-zinc-500: #557279;
+        --color-zinc-600: #436067;
+        --color-zinc-700: #355057;
+        --color-zinc-800: #284047;
+        --color-zinc-900: #233038;
+        --color-neutral-100: #eaf2f3;
+        --color-neutral-800: #2f6b70;
+        --color-accent: #2f6b70;
+        --color-accent-content: #2f6b70;
+        --color-accent-foreground: #f2fbfb;
+    }
+
+    html:not(.dark) body[data-ui-theme='editorial-neutral'] {
+        --color-white: #fbf8f2;
+        --color-zinc-50: #f3ece2;
+        --color-zinc-100: #e8ddcf;
+        --color-zinc-200: #d8c8b5;
+        --color-zinc-300: #c0ab92;
+        --color-zinc-400: #93816d;
+        --color-zinc-500: #766856;
+        --color-zinc-600: #615342;
+        --color-zinc-700: #4d4133;
+        --color-zinc-800: #3e3428;
+        --color-zinc-900: #332d28;
+        --color-neutral-100: #f3ece2;
+        --color-neutral-800: #6a7c56;
+        --color-accent: #6a7c56;
+        --color-accent-content: #6a7c56;
+        --color-accent-foreground: #f8f6ef;
+    }
 }
 
 @layer base {

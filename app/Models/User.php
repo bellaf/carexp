@@ -27,6 +27,7 @@ class User extends Authenticatable
         'preferred_currency',
         'measurement_system',
         'volume_unit',
+        'ui_theme',
         'timezone',
     ];
 
