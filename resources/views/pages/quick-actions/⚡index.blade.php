@@ -209,16 +209,16 @@ new class extends Component {
 }; ?>
 
 <section class="w-full space-y-6">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl">{{ __('Quick Actions') }}</flux:heading>
             <flux:subheading>{{ __('Define one-click expense actions for common costs.') }}</flux:subheading>
         </div>
 
-        <flux:button variant="primary" wire:click="startCreating">{{ __('Add Quick Action') }}</flux:button>
+        <flux:button class="w-full sm:w-auto" variant="primary" wire:click="startCreating">{{ __('Add Quick Action') }}</flux:button>
     </div>
 
-    <flux:modal :closable="false" wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
+    <flux:modal :closable="false" wire:model="showForm" class="max-h-[90vh] overflow-y-auto border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
         <div class="space-y-5">
             <div class="flex items-start justify-between gap-3">
                 <div>
@@ -262,7 +262,7 @@ new class extends Component {
                 <flux:input wire:model="form.notes" :label="__('Notes (Optional)')" type="text" />
                 <flux:checkbox wire:model="form.is_active" :label="__('Active')" />
 
-                <div class="flex items-center justify-between gap-3">
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-3">
                         <flux:button type="submit" variant="primary">{{ __('Save Quick Action') }}</flux:button>
                         <x-action-message on="quick-action-saved">
@@ -289,7 +289,48 @@ new class extends Component {
             <flux:text>{{ __('No quick actions defined yet.') }}</flux:text>
         </flux:card>
     @else
-        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+        <flux:card class="space-y-2">
+            <flux:text>{{ __('Tap any quick action to edit it.') }}</flux:text>
+        </flux:card>
+
+        <div class="space-y-3 md:hidden">
+            @foreach ($this->quickActions as $quickAction)
+                <button
+                    type="button"
+                    class="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-left hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
+                    wire:click="editQuickAction({{ $quickAction->id }})"
+                    wire:key="quick-action-card-{{ $quickAction->id }}"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="font-medium">{{ $quickAction->name }}</div>
+                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $quickAction->entry_target === 'fuel_log' ? __('Fuel Log') : __('Expense') }}</div>
+                        </div>
+                        <div class="text-right text-sm">
+                            <div class="font-semibold">{{ $this->formatCurrency($quickAction->amount) }}</div>
+                            <div class="text-zinc-500 dark:text-zinc-400">{{ $quickAction->is_active ? __('Active') : __('Hidden') }}</div>
+                        </div>
+                    </div>
+                    <dl class="mt-3 grid gap-2 text-sm">
+                        <div>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Car') }}</dt>
+                            <dd>{{ $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default') }}</dd>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Fuel Volume') }}</dt>
+                                <dd>{{ $quickAction->entry_target === 'fuel_log' && $quickAction->fuel_volume !== null ? number_format((float) $quickAction->fuel_volume, 3) : __('N/A') }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Order') }}</dt>
+                                <dd>{{ $quickAction->sort_order }}</dd>
+                            </div>
+                        </div>
+                    </dl>
+                </button>
+            @endforeach
+        </div>
+        <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
             <table class="w-full min-w-[980px] text-left text-sm">
                 <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                     <tr>

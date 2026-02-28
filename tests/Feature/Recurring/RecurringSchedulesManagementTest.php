@@ -18,7 +18,8 @@ test('authenticated users can view recurring page', function () {
     $this->actingAs($user)
         ->get(route('recurring.index'))
         ->assertOk()
-        ->assertSee('Recurring Schedules');
+        ->assertSee('Recurring Schedules')
+        ->assertSee('Add Schedule');
 });
 
 test('user can create, update, pause, and delete a recurring schedule', function () {

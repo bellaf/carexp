@@ -60,6 +60,10 @@ test('dashboard shows running totals from ledger entries', function () {
         'source_type' => 'reimbursement',
     ]);
 
+    QuickAction::factory()->for($user)->for($car)->create([
+        'name' => 'Fuel Up',
+    ]);
+
     $this->actingAs($user);
 
     $this->get(route('dashboard'))
@@ -67,6 +71,7 @@ test('dashboard shows running totals from ledger entries', function () {
         ->assertSee('Net Cost (All-Time)')
         ->assertSee('Financial Summary')
         ->assertSee('Current Car')
+        ->assertSee('Tap once to capture a common entry quickly.')
         ->assertSee($car->make)
         ->assertSee('Transactions')
         ->assertSee('200.00')

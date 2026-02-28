@@ -95,6 +95,16 @@ test('quick action row edit flow opens modal without row action buttons', functi
         ->assertSet('form.name', 'Row Click Edit');
 });
 
+test('authenticated users can view quick actions page', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('quick-actions.index'))
+        ->assertOk()
+        ->assertSee('Quick Actions')
+        ->assertSee('Add Quick Action');
+});
+
 test('dashboard quick action button posts expense and ledger entry', function () {
     $user = User::factory()->create();
     $car = $user->cars()->create([

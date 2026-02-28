@@ -406,13 +406,13 @@ new class extends Component {
 }; ?>
 
 <section class="w-full space-y-6">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl">{{ __('Fuel Logs') }}</flux:heading>
             <flux:subheading>{{ __('Track fill-ups, fuel cost, and efficiency trends.') }}</flux:subheading>
         </div>
 
-        <flux:button variant="primary" wire:click="startCreating" :disabled="$this->cars->isEmpty()">
+        <flux:button variant="primary" class="w-full sm:w-auto" wire:click="startCreating" :disabled="$this->cars->isEmpty()">
             {{ __('Add Fuel Log') }}
         </flux:button>
     </div>
@@ -423,7 +423,7 @@ new class extends Component {
         </flux:card>
     @endif
 
-    <flux:modal :closable="false" wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
+    <flux:modal :closable="false" wire:model="showForm" class="max-h-[90vh] overflow-y-auto border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
         <div class="space-y-5">
             <div class="flex items-start justify-between gap-3">
                 <div>
@@ -453,7 +453,7 @@ new class extends Component {
 
                 <flux:checkbox wire:model="form.full_tank" :label="__('Full tank fill-up')" />
 
-                <div class="flex items-center justify-between gap-3">
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-3">
                         <flux:button type="submit" variant="primary">{{ __('Save Fuel Log') }}</flux:button>
                         <x-action-message on="fuel-log-saved">
@@ -492,6 +492,7 @@ new class extends Component {
                 <strong>{{ $this->averageEfficiency !== null ? number_format($this->averageEfficiency, 3) : __('N/A') }}</strong>
             </flux:text>
         </div>
+        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Tap any fuel entry to edit it.') }}</flux:text>
     </flux:card>
 
     @if ($this->fuelLogs->isEmpty())
@@ -499,7 +500,46 @@ new class extends Component {
             <flux:text>{{ __('No fuel logs found for the current filter.') }}</flux:text>
         </flux:card>
     @else
-        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+        <div class="space-y-3 md:hidden">
+            @foreach ($this->fuelLogs as $fuelLog)
+                <button
+                    type="button"
+                    class="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-left hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
+                    wire:click="editFuelLog({{ $fuelLog->id }})"
+                    wire:key="fuel-card-{{ $fuelLog->id }}"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="font-medium">{{ $fuelLog->log_date->format('d-m-Y') }}</div>
+                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Odometer') }}: {{ number_format((float) $fuelLog->odometer) }}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-semibold">{{ $this->formatCurrency($fuelLog->ledgerEntry?->amount) }}</div>
+                            @if ($fuelLog->full_tank)
+                                <span class="mt-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{{ __('Full') }}</span>
+                            @else
+                                <span class="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{{ __('Partial') }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <div>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Volume') }}</dt>
+                            <dd>{{ number_format((float) $fuelLog->volume, 3) }} {{ $this->volumeUnitLabel($fuelLog->volume_unit) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Price/Unit') }}</dt>
+                            <dd>{{ $this->currencySymbol() }}{{ number_format((float) $fuelLog->price_per_unit, 3) }}/{{ $this->volumeUnitLabel($fuelLog->volume_unit) }}</dd>
+                        </div>
+                        <div class="col-span-2">
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Efficiency (mpg)') }}</dt>
+                            <dd>{{ $fuelLog->calculated_efficiency !== null ? number_format((float) $fuelLog->calculated_efficiency, 3) : __('N/A') }}</dd>
+                        </div>
+                    </dl>
+                </button>
+            @endforeach
+        </div>
+        <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
             <table class="w-full min-w-[860px] text-left text-sm">
                 <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                     <tr>

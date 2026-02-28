@@ -61,13 +61,16 @@
 
         <div x-show="activeTab === 'overview'" class="space-y-6">
             @if ($quickActions->isNotEmpty())
-                <flux:card class="space-y-3">
-                    <div class="flex items-center justify-between gap-3">
-                        <flux:heading>{{ __('Quick Actions') }}</flux:heading>
+                <flux:card class="space-y-4">
+                    <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                        <div>
+                            <flux:heading>{{ __('Quick Actions') }}</flux:heading>
+                            <flux:text class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('Tap once to capture a common entry quickly.') }}</flux:text>
+                        </div>
                         <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Configure these in the Quick Actions page.') }}</flux:text>
                     </div>
 
-                    <div class="flex flex-wrap gap-2">
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         @foreach ($quickActions as $quickAction)
                             @php
                                 $quickActionPayload = [
@@ -93,6 +96,7 @@
                             <flux:button
                                 type="button"
                                 variant="primary"
+                                class="h-14 justify-center rounded-xl px-4 text-center text-base font-medium"
                                 x-on:click="openQuickAction({{ \Illuminate\Support\Js::from($quickActionPayload) }})"
                             >
                                 {{ $quickAction->name }}
@@ -130,7 +134,57 @@
                 <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
                     {{ __('Expenses are shown in red, reimbursements in green, and net values are green when in surplus (negative).') }}
                 </flux:text>
-                <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <div class="space-y-3 md:hidden">
+                    @foreach ([
+                        __('Expenses') => [
+                            'all_time' => \App\Support\CurrencyFormatter::format($allTimeExpenses, $currencyCode),
+                            'actual' => \App\Support\CurrencyFormatter::format($actualYearExpenses, $currencyCode),
+                            'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingExpenses, $currencyCode),
+                            'year_end' => \App\Support\CurrencyFormatter::format($projectedYearExpenses, $currencyCode),
+                            'tone' => 'text-rose-700 dark:text-rose-400',
+                        ],
+                        __('Reimbursements') => [
+                            'all_time' => \App\Support\CurrencyFormatter::format($allTimeReimbursements, $currencyCode),
+                            'actual' => \App\Support\CurrencyFormatter::format($actualYearReimbursements, $currencyCode),
+                            'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingReimbursements, $currencyCode),
+                            'year_end' => \App\Support\CurrencyFormatter::format($projectedYearReimbursements, $currencyCode),
+                            'tone' => 'text-emerald-700 dark:text-emerald-400',
+                        ],
+                        __('Net Cost') => [
+                            'all_time' => \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode),
+                            'actual' => \App\Support\CurrencyFormatter::format($actualYearNetCost, $currencyCode),
+                            'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingNetCost, $currencyCode),
+                            'year_end' => \App\Support\CurrencyFormatter::format($projectedYearNetCost, $currencyCode),
+                            'tone' => $projectedYearNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($projectedYearNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100'),
+                        ],
+                    ] as $label => $summaryRow)
+                        <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <flux:text class="font-medium">{{ $label }}</flux:text>
+                                <span class="text-sm font-semibold {{ $summaryRow['tone'] }}">{{ $summaryRow['year_end'] }}</span>
+                            </div>
+                            <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                <div>
+                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('All-Time') }}</dt>
+                                    <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['all_time'] }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Actual YTD') }}</dt>
+                                    <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['actual'] }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Projected Remaining') }}</dt>
+                                    <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['remaining'] }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Projected Year-End') }}</dt>
+                                    <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['year_end'] }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
                     <table class="w-full min-w-[860px] text-left text-sm">
                         <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                             <tr>
@@ -178,7 +232,63 @@
                     @if ($upcomingMaintenance->isEmpty())
                         <flux:text>{{ __('No service due in the next 14 days.') }}</flux:text>
                     @else
-                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                        <div class="space-y-3 md:hidden">
+                            @foreach ($upcomingMaintenance as $record)
+                                @php
+                                    $currentOdometer = $record->car?->current_odometer;
+                                    $dateTriggered = $record->next_due_date !== null
+                                        && $record->next_due_date->gte(now()->startOfDay())
+                                        && $record->next_due_date->lte(now()->addDays(14)->endOfDay());
+                                    $odometerTriggered = $record->next_due_odometer !== null
+                                        && $currentOdometer !== null
+                                        && $currentOdometer >= ((int) $record->next_due_odometer - 500);
+                                    $triggerLabel = $dateTriggered && $odometerTriggered
+                                        ? __('Date + Odometer')
+                                        : ($dateTriggered ? __('Date') : __('Odometer'));
+                                    $servicePayload = [
+                                        'id' => $record->id,
+                                        'service_type' => (string) $record->service_type,
+                                        'next_due_date' => $record->next_due_date?->format('Y-m-d'),
+                                        'next_due_date_display' => $record->next_due_date?->format('d-m-Y') ?? __('N/A'),
+                                        'next_due_odometer' => $record->next_due_odometer,
+                                        'current_odometer' => $currentOdometer,
+                                        'trigger' => $triggerLabel,
+                                        'car' => trim(collect([$record->car?->year, $record->car?->make, $record->car?->model])->filter()->implode(' ')) ?: __('N/A'),
+                                        'notes' => $record->notes ?? '',
+                                    ];
+                                @endphp
+                                <button
+                                    type="button"
+                                    class="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-left hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
+                                    x-on:click='selectedService = @json($servicePayload); showServiceModal = true'
+                                >
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="font-medium">{{ $record->service_type }}</div>
+                                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ trim(collect([$record->car?->year, $record->car?->make, $record->car?->model])->filter()->implode(' ')) ?: __('N/A') }}</div>
+                                        </div>
+                                        <flux:badge>{{ $triggerLabel }}</flux:badge>
+                                    </div>
+                                    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                        <div>
+                                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Due Date') }}</dt>
+                                            <dd>{{ $record->next_due_date?->format('d-m-Y') ?? __('N/A') }}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Odometer') }}</dt>
+                                            <dd>
+                                                @if ($record->next_due_odometer !== null)
+                                                    {{ number_format((int) ($currentOdometer ?? 0)) }}/{{ number_format((int) $record->next_due_odometer) }}
+                                                @else
+                                                    {{ __('N/A') }}
+                                                @endif
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                </button>
+                            @endforeach
+                        </div>
+                        <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
                             <table class="w-full min-w-[520px] text-left text-sm">
                                 <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                                     <tr>
@@ -250,7 +360,49 @@
                     @if ($upcomingRecurringTransactions->isEmpty())
                         <flux:text>{{ __('No recurring transactions due in the next 14 days.') }}</flux:text>
                     @else
-                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                        <div class="space-y-3 md:hidden">
+                            @foreach ($upcomingRecurringTransactions as $schedule)
+                                @php
+                                    $recurringPayload = [
+                                        'id' => $schedule->id,
+                                        'next_entry_date' => $schedule->next_entry_date->format('Y-m-d'),
+                                        'next_entry_date_display' => $schedule->next_entry_date->format('d-m-Y'),
+                                        'entry_type' => (string) $schedule->entry_type,
+                                        'account' => (string) ($schedule->account?->name ?? __('N/A')),
+                                        'amount' => (string) $schedule->amount,
+                                        'cadence' => (string) $schedule->cadence,
+                                        'end_date' => $schedule->end_date?->format('Y-m-d'),
+                                        'reference' => $schedule->reference ?? '',
+                                        'notes' => $schedule->notes ?? '',
+                                        'is_active' => (bool) $schedule->is_active,
+                                    ];
+                                @endphp
+                                <button
+                                    type="button"
+                                    class="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-left hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
+                                    x-on:click='selectedRecurring = @json($recurringPayload); showRecurringModal = true'
+                                >
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="font-medium">{{ $schedule->account?->name ?? __('N/A') }}</div>
+                                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $schedule->entry_type === 'income' ? __('Reimbursement') : __('Expense') }}</div>
+                                        </div>
+                                        <flux:badge>{{ ucfirst((string) $schedule->cadence) }}</flux:badge>
+                                    </div>
+                                    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                        <div>
+                                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Due Date') }}</dt>
+                                            <dd>{{ $schedule->next_entry_date->format('d-m-Y') }}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Amount') }}</dt>
+                                            <dd>{{ \App\Support\CurrencyFormatter::format($schedule->amount, $currencyCode) }}</dd>
+                                        </div>
+                                    </dl>
+                                </button>
+                            @endforeach
+                        </div>
+                        <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
                             <table class="w-full min-w-[520px] text-left text-sm">
                                 <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                                     <tr>
@@ -513,7 +665,57 @@
                 @if ($transactions->count() === 0)
                     <flux:text>{{ __('No transactions found for the selected filter.') }}</flux:text>
                 @else
-                    <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                    <div class="space-y-3 md:hidden">
+                        @foreach ($transactions as $entry)
+                            @php
+                                $typeLabel = match ($entry->source_type) {
+                                    'fuel_log' => 'Fuel',
+                                    'maintenance_record' => 'Maintenance',
+                                    'reimbursement' => 'Reimbursement',
+                                    'expense' => 'Manual Expense',
+                                    'recurring' => 'Recurring',
+                                    default => ucfirst((string) $entry->source_type),
+                                };
+                                $description = $entry->reference ?: ($entry->notes ?: '');
+                                $entrySummary = [
+                                    'date' => $entry->entry_date->format('d-m-Y'),
+                                    'type' => __($typeLabel),
+                                    'account' => $entry->account?->name ?? __('N/A'),
+                                    'description' => $description !== '' ? $description : __('N/A'),
+                                    'expense' => $entry->entry_type === 'expense' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-',
+                                    'income' => $entry->entry_type === 'income' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-',
+                                    'entry_type' => $entry->entry_type,
+                                    'notes' => $entry->notes ?: __('N/A'),
+                                ];
+                            @endphp
+                            <button
+                                type="button"
+                                class="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-left hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
+                                x-on:click='selectedEntry = @json($entrySummary); showEntryModal = true'
+                            >
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div class="font-medium">{{ __($typeLabel) }}</div>
+                                        <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $entry->entry_date->format('d-m-Y') }}</div>
+                                    </div>
+                                    <div class="text-right text-sm font-semibold {{ $entry->entry_type === 'income' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400' }}">
+                                        {{ \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) }}
+                                    </div>
+                                </div>
+                                <dl class="mt-3 grid gap-2 text-sm">
+                                    <div>
+                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Account') }}</dt>
+                                        <dd>{{ $entry->account?->name ?? __('N/A') }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Description') }}</dt>
+                                        <dd>{{ $description !== '' ? $description : __('N/A') }}</dd>
+                                    </div>
+                                </dl>
+                            </button>
+                        @endforeach
+                    </div>
+                    <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
                         <table class="w-full min-w-[720px] text-left text-sm">
                             <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                                 <tr>

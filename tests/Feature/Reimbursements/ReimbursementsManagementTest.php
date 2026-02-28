@@ -18,7 +18,8 @@ test('authenticated users can view reimbursements page', function () {
     $this->actingAs($user)
         ->get(route('reimbursements.index'))
         ->assertOk()
-        ->assertSee('Reimbursements');
+        ->assertSee('Reimbursements')
+        ->assertSee('Tap any reimbursement to edit it.');
 });
 
 test('user can create reimbursement and assign reimbursement type', function () {
@@ -57,7 +58,7 @@ test('user can create reimbursement and assign reimbursement type', function () 
     $reimbursement = Reimbursement::query()
         ->where('user_id', $user->id)
         ->where('car_id', $car->id)
-        ->where('reimbursed_date', now()->toDateString())
+        ->where('notes', 'Monthly allowance')
         ->firstOrFail();
 
     expect($reimbursement->ledger_entry_id)->not->toBeNull();

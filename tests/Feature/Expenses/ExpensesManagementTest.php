@@ -20,7 +20,8 @@ test('authenticated users can view expenses page', function () {
     $this->actingAs($user)
         ->get(route('expenses.index'))
         ->assertOk()
-        ->assertSee('Expenses');
+        ->assertSee('Expenses')
+        ->assertSee('Tap any expense to edit it.');
 });
 
 test('user can create an expense', function () {

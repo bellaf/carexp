@@ -333,13 +333,13 @@ new class extends Component {
 }; ?>
 
 <section class="w-full space-y-6">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl">{{ __('Maintenance') }}</flux:heading>
             <flux:subheading>{{ __('Log servicing and track upcoming due reminders.') }}</flux:subheading>
         </div>
 
-        <flux:button variant="primary" wire:click="startCreating" :disabled="$this->cars->isEmpty()">
+        <flux:button class="w-full sm:w-auto" variant="primary" wire:click="startCreating" :disabled="$this->cars->isEmpty()">
             {{ __('Add Record') }}
         </flux:button>
     </div>
@@ -350,16 +350,28 @@ new class extends Component {
         </flux:card>
     @endif
 
-    <flux:card class="space-y-2">
-        <flux:text>{{ __('Overdue') }}: <strong>{{ $this->reminderStats['overdue'] }}</strong></flux:text>
-        <flux:text>{{ __('Due Soon') }}: <strong>{{ $this->reminderStats['due_soon'] }}</strong></flux:text>
+    <flux:card class="space-y-3">
+        <div class="grid gap-3 sm:grid-cols-2">
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                <flux:text>{{ __('Overdue') }}</flux:text>
+                <flux:heading size="lg">{{ $this->reminderStats['overdue'] }}</flux:heading>
+            </div>
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                <flux:text>{{ __('Due Soon') }}</flux:text>
+                <flux:heading size="lg">{{ $this->reminderStats['due_soon'] }}</flux:heading>
+            </div>
+        </div>
+        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Tap a record to edit it.') }}</flux:text>
     </flux:card>
 
-    <flux:modal :closable="false" wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
+    <flux:modal :closable="false" wire:model="showForm" class="max-h-[90vh] overflow-y-auto border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
         <div class="space-y-5">
-            <div>
-                <flux:heading>{{ $editingMaintenanceId ? __('Edit Maintenance') : __('Add Maintenance') }}</flux:heading>
-                <flux:subheading>{{ __('Add service details and optional due reminders.') }}</flux:subheading>
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <flux:heading>{{ $editingMaintenanceId ? __('Edit Maintenance') : __('Add Maintenance') }}</flux:heading>
+                    <flux:subheading>{{ __('Add service details and optional due reminders.') }}</flux:subheading>
+                </div>
+                <flux:button type="button" variant="ghost" wire:click="cancelForm">{{ __('Close') }}</flux:button>
             </div>
 
             <form wire:submit="saveRecord" class="space-y-5">
@@ -393,11 +405,8 @@ new class extends Component {
 
                 <flux:input wire:model="form.notes" :label="__('Notes')" type="text" />
 
-                <div class="flex items-center gap-3">
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
                     <flux:button type="submit" variant="primary">{{ __('Save Record') }}</flux:button>
-                    <flux:modal.close>
-                        <flux:button type="button" variant="ghost" wire:click="cancelForm">{{ __('Cancel') }}</flux:button>
-                    </flux:modal.close>
 
                     <x-action-message on="maintenance-saved">
                         {{ __('Saved.') }}
@@ -416,7 +425,11 @@ new class extends Component {
             @foreach ($this->maintenanceRecords as $record)
                 @php($status = $this->recordStatus($record))
 
-                <flux:card class="space-y-3">
+                <flux:card
+                    class="cursor-pointer space-y-3 border border-zinc-200 bg-zinc-50/70 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
+                    wire:click="editRecord({{ $record->id }})"
+                    wire:key="maintenance-card-{{ $record->id }}"
+                >
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <flux:heading>{{ $record->service_type }}</flux:heading>
@@ -435,9 +448,6 @@ new class extends Component {
                             @else
                                 <flux:badge>{{ __('Upcoming') }}</flux:badge>
                             @endif
-
-                            <flux:button variant="ghost" wire:click="editRecord({{ $record->id }})">{{ __('Edit') }}</flux:button>
-                            <flux:button variant="danger" wire:click="deleteRecord({{ $record->id }})">{{ __('Delete') }}</flux:button>
                         </div>
                     </div>
 

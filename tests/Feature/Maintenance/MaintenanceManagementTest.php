@@ -18,7 +18,8 @@ test('authenticated users can view maintenance page', function () {
     $this->actingAs($user)
         ->get(route('maintenance.index'))
         ->assertOk()
-        ->assertSee('Maintenance');
+        ->assertSee('Maintenance')
+        ->assertSee('Tap a record to edit it.');
 });
 
 test('user can create maintenance record', function () {

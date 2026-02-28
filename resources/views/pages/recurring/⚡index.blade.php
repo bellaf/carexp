@@ -327,17 +327,25 @@ new class extends Component {
 }; ?>
 
 <section class="w-full space-y-6">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl">{{ __('Recurring Schedules') }}</flux:heading>
             <flux:subheading>{{ __('Manage repeat expenses and reimbursements used in forecasting.') }}</flux:subheading>
         </div>
 
-        <div class="flex items-center gap-2">
-            <flux:button variant="ghost" wire:click="runDueEntriesNow">
+        <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <details class="w-full sm:hidden">
+                <summary class="cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50/70 px-4 py-3 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-200">{{ __('More Actions') }}</summary>
+                <div class="mt-2">
+                    <flux:button class="w-full" variant="ghost" wire:click="runDueEntriesNow">
+                        {{ __('DEV: Run Due Entries Now') }}
+                    </flux:button>
+                </div>
+            </details>
+            <flux:button class="hidden sm:inline-flex" variant="ghost" wire:click="runDueEntriesNow">
                 {{ __('DEV: Run Due Entries Now (Use Cron In Production)') }}
             </flux:button>
-            <flux:button variant="primary" wire:click="startCreating">{{ __('Add Schedule') }}</flux:button>
+            <flux:button class="w-full sm:w-auto" variant="primary" wire:click="startCreating">{{ __('Add Schedule') }}</flux:button>
         </div>
     </div>
 
@@ -401,7 +409,48 @@ new class extends Component {
             <flux:text>{{ __('No recurring schedules yet.') }}</flux:text>
         </flux:card>
     @else
-        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+        <flux:card class="space-y-2">
+            <flux:text>{{ __('Tap any schedule to edit it.') }}</flux:text>
+        </flux:card>
+
+        <div class="space-y-3 md:hidden">
+            @foreach ($this->recurringTransactions as $schedule)
+                <button
+                    type="button"
+                    class="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-left hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
+                    wire:click="openRecurringDetails({{ $schedule->id }})"
+                    wire:key="recurring-card-{{ $schedule->id }}"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="font-medium">{{ $schedule->account?->name ?? __('N/A') }}</div>
+                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $schedule->next_entry_date->format('d-m-Y') }}</div>
+                        </div>
+                        <div class="text-right text-sm">
+                            <div class="font-semibold">{{ $this->formatCurrency($schedule->amount) }}</div>
+                            <div class="text-zinc-500 dark:text-zinc-400">{{ $schedule->is_active ? __('Active') : __('Paused') }}</div>
+                        </div>
+                    </div>
+                    <dl class="mt-3 grid gap-2 text-sm">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Cadence') }}</dt>
+                                <dd>{{ ucfirst($schedule->cadence) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Type') }}</dt>
+                                <dd>{{ $schedule->entry_type === 'income' ? __('Reimbursement') : __('Expense') }}</dd>
+                            </div>
+                        </div>
+                        <div>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Notes') }}</dt>
+                            <dd>{{ $schedule->notes ?: __('N/A') }}</dd>
+                        </div>
+                    </dl>
+                </button>
+            @endforeach
+        </div>
+        <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
             <table class="w-full min-w-[920px] text-left text-sm">
                 <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                     <tr>

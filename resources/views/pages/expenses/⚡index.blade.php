@@ -389,20 +389,20 @@ new class extends Component {
 }; ?>
 
 <section class="w-full space-y-6">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl">{{ __('Expenses') }}</flux:heading>
             <flux:subheading>{{ __('Log and review your car-related costs.') }}</flux:subheading>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <flux:modal.trigger name="manage-expense-categories">
-                <flux:button variant="ghost" wire:click="startCreatingCategory">
+                <flux:button class="w-full sm:w-auto" variant="ghost" wire:click="startCreatingCategory">
                     {{ __('Edit Categories') }}
                 </flux:button>
             </flux:modal.trigger>
 
-            <flux:button variant="primary" wire:click="startCreating" :disabled="$this->cars->isEmpty() || $this->categories->isEmpty()">
+            <flux:button class="w-full sm:w-auto" variant="primary" wire:click="startCreating" :disabled="$this->cars->isEmpty() || $this->categories->isEmpty()">
                 {{ __('Add Expense') }}
             </flux:button>
         </div>
@@ -459,7 +459,7 @@ new class extends Component {
         </div>
     </flux:modal>
 
-    <flux:modal :closable="false" wire:model="showForm" class="border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
+    <flux:modal :closable="false" wire:model="showForm" class="max-h-[90vh] overflow-y-auto border border-zinc-300 shadow-2xl ring-1 ring-black/10 md:w-[48rem] dark:border-zinc-600 dark:ring-white/10">
         <div class="space-y-5">
             <div class="flex items-start justify-between gap-3">
                 <div>
@@ -496,7 +496,7 @@ new class extends Component {
                 <flux:input wire:model="form.tags" :label="__('Tags (comma separated)')" type="text" />
                 <flux:input wire:model="form.notes" :label="__('Notes')" type="text" />
 
-                <div class="flex items-center justify-between gap-3">
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-3">
                         <flux:button type="submit" variant="primary">{{ __('Save Expense') }}</flux:button>
                         <x-action-message on="expense-saved">
@@ -519,7 +519,30 @@ new class extends Component {
     </flux:modal>
 
     <flux:card class="space-y-4">
-        <div class="flex flex-wrap items-end gap-3">
+        <div class="space-y-3 md:hidden">
+            <div class="w-full sm:w-56">
+                <flux:select wire:model.live="filterPeriod" :label="__('Period')">
+                    <flux:select.option value="this_month">{{ __('This Month') }}</flux:select.option>
+                    <flux:select.option value="last_month">{{ __('Last Month') }}</flux:select.option>
+                    <flux:select.option value="year_to_date">{{ __('Year to Date') }}</flux:select.option>
+                    <flux:select.option value="all_time">{{ __('All Time') }}</flux:select.option>
+                </flux:select>
+            </div>
+
+            <details class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                <summary class="cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ __('More Filters') }}</summary>
+                <div class="mt-3">
+                    <flux:select wire:model.live="filterCategoryId" :label="__('Filter Category')">
+                        <flux:select.option value="">{{ __('All categories') }}</flux:select.option>
+                        @foreach ($this->categories as $category)
+                            <flux:select.option :value="$category->id">{{ $category->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
+            </details>
+        </div>
+
+        <div class="hidden flex-wrap items-end gap-3 md:flex">
             <div class="w-full sm:w-64">
                 <flux:select wire:model.live="filterCategoryId" :label="__('Filter Category')">
                     <flux:select.option value="">{{ __('All categories') }}</flux:select.option>
@@ -540,6 +563,7 @@ new class extends Component {
         </div>
 
         <flux:text>{{ __('Filtered total') }}: <strong>{{ $this->formatCurrency($this->filteredTotal) }}</strong></flux:text>
+        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Tap any expense to edit it.') }}</flux:text>
     </flux:card>
 
     @if ($this->expenses->isEmpty())
@@ -547,7 +571,41 @@ new class extends Component {
             <flux:text>{{ __('No expenses found for the selected filters.') }}</flux:text>
         </flux:card>
     @else
-        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+        <div class="space-y-3 md:hidden">
+            @foreach ($this->expenses as $expense)
+                <button
+                    type="button"
+                    class="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-left hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
+                    wire:click="editExpense({{ $expense->id }})"
+                    wire:key="expense-card-{{ $expense->id }}"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="font-medium">{{ $expense->category->name }}</div>
+                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $expense->expense_date->format('d-m-Y') }}</div>
+                        </div>
+                        <div class="text-right font-semibold">{{ $this->formatCurrency($expense->amount) }}</div>
+                    </div>
+                    <dl class="mt-3 grid gap-2 text-sm">
+                        <div>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Vendor') }}</dt>
+                            <dd>{{ $expense->vendor ?: __('N/A') }}</dd>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Odometer') }}</dt>
+                                <dd>{{ $expense->odometer !== null ? number_format((float) $expense->odometer) : __('N/A') }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Tags') }}</dt>
+                                <dd>{{ implode(', ', $expense->tags ?? []) ?: __('N/A') }}</dd>
+                            </div>
+                        </div>
+                    </dl>
+                </button>
+            @endforeach
+        </div>
+        <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
             <table class="w-full min-w-[980px] text-left text-sm">
                 <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                     <tr>

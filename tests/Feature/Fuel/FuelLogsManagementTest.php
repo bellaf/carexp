@@ -18,7 +18,8 @@ test('authenticated users can view fuel logs page', function () {
     $this->actingAs($user)
         ->get(route('fuel.index'))
         ->assertOk()
-        ->assertSee('Fuel Logs');
+        ->assertSee('Fuel Logs')
+        ->assertSee('Tap any fuel entry to edit it.');
 });
 
 test('user can create fuel log with auto calculated values and linked ledger entry', function () {
