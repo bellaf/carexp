@@ -7,6 +7,7 @@ use App\Models\LedgerEntry;
 use App\Models\User;
 use App\Models\VehicleObligation;
 use App\Support\CurrencyFormatter;
+use App\Support\FuelEfficiencyCalculator;
 use App\Support\OwnershipCostMetrics;
 use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
@@ -83,8 +84,8 @@ class ReportsController extends Controller
             'summary' => $this->summaryMetrics($ledgerEntries, $user->preferred_currency),
             'categoryRows' => $this->categoryBreakdown($ledgerEntries, $user->preferred_currency),
             'monthlyRows' => $this->monthlyLedgerTrend($ledgerEntries, $user->preferred_currency),
-            'fuelSummary' => $this->fuelSummary($fuelLogs, $user->preferred_currency),
-            'fuelMonthlyRows' => $this->fuelMonthlyTrend($fuelLogs, $user->preferred_currency),
+            'fuelSummary' => $this->fuelSummary($fuelLogs, $user->preferred_currency, $user->measurement_system),
+            'fuelMonthlyRows' => $this->fuelMonthlyTrend($fuelLogs, $user->preferred_currency, $user->measurement_system),
             'obligationSummary' => $this->obligationSummary($vehicleObligations, $user->preferred_currency),
             'obligationRows' => $this->obligationRows($vehicleObligations, $user->preferred_currency),
             'ownershipRows' => $this->ownershipRows($cars, $selectedCarId, $user->preferred_currency, $user->measurement_system),
@@ -203,14 +204,11 @@ class ReportsController extends Controller
     /**
      * @return array<string, string|int|float>
      */
-    private function fuelSummary(Collection $fuelLogs, string $currencyCode): array
+    private function fuelSummary(Collection $fuelLogs, string $currencyCode, string $measurementSystem): array
     {
         $totalSpend = (float) $fuelLogs->sum(fn (FuelLog $fuelLog): float => (float) ($fuelLog->ledgerEntry?->amount ?? 0));
         $totalVolume = (float) $fuelLogs->sum('volume');
-        $averageEfficiency = $fuelLogs
-            ->where('full_tank', true)
-            ->whereNotNull('calculated_efficiency')
-            ->avg('calculated_efficiency');
+        $averageEfficiency = FuelEfficiencyCalculator::averageForLogs($fuelLogs, $measurementSystem);
 
         return [
             'fill_count' => $fuelLogs->count(),
@@ -221,17 +219,14 @@ class ReportsController extends Controller
         ];
     }
 
-    private function fuelMonthlyTrend(Collection $fuelLogs, string $currencyCode): Collection
+    private function fuelMonthlyTrend(Collection $fuelLogs, string $currencyCode, string $measurementSystem): Collection
     {
         return $fuelLogs
             ->groupBy(fn (FuelLog $fuelLog): string => $fuelLog->log_date->format('Y-m'))
-            ->map(function (Collection $entries, string $monthKey) use ($currencyCode): array {
+            ->map(function (Collection $entries, string $monthKey) use ($currencyCode, $measurementSystem): array {
                 $totalSpend = (float) $entries->sum(fn (FuelLog $fuelLog): float => (float) ($fuelLog->ledgerEntry?->amount ?? 0));
                 $totalVolume = (float) $entries->sum('volume');
-                $averageEfficiency = $entries
-                    ->where('full_tank', true)
-                    ->whereNotNull('calculated_efficiency')
-                    ->avg('calculated_efficiency');
+                $averageEfficiency = FuelEfficiencyCalculator::averageForLogs($entries, $measurementSystem);
 
                 return [
                     'month' => CarbonImmutable::createFromFormat('Y-m', $monthKey)->format('M Y'),

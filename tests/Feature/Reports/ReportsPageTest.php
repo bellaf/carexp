@@ -129,6 +129,86 @@ test('fuel report shows fuel metrics from fuel logs', function () {
         ->assertSee('33.300');
 });
 
+test('fuel report shows weighted average efficiency instead of arithmetic mean', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+        'volume_unit' => 'gallons',
+    ]);
+    $car = Car::factory()->for($user)->create();
+    $account = Account::factory()->create([
+        'key' => 'fuel_expense',
+        'name' => 'Fuel',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $firstEntry = LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'entry_type' => 'expense',
+        'amount' => 30,
+        'entry_date' => '2026-02-01',
+        'source_type' => 'fuel_log',
+    ]);
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'ledger_entry_id' => $firstEntry->id,
+        'log_date' => '2026-02-01',
+        'odometer' => 10000,
+        'volume' => 8,
+        'volume_unit' => 'gallons',
+        'full_tank' => true,
+        'calculated_efficiency' => null,
+    ]);
+
+    $secondEntry = LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'entry_type' => 'expense',
+        'amount' => 20,
+        'entry_date' => '2026-02-02',
+        'source_type' => 'fuel_log',
+    ]);
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'ledger_entry_id' => $secondEntry->id,
+        'log_date' => '2026-02-02',
+        'odometer' => 10100,
+        'volume' => 5,
+        'volume_unit' => 'gallons',
+        'full_tank' => true,
+        'calculated_efficiency' => 20,
+    ]);
+
+    $thirdEntry = LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'entry_type' => 'expense',
+        'amount' => 40,
+        'entry_date' => '2026-02-03',
+        'source_type' => 'fuel_log',
+    ]);
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'ledger_entry_id' => $thirdEntry->id,
+        'log_date' => '2026-02-03',
+        'odometer' => 10600,
+        'volume' => 10,
+        'volume_unit' => 'gallons',
+        'full_tank' => true,
+        'calculated_efficiency' => 50,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('reports.index', ['report' => 'fuel', 'period' => 'all_time']))
+        ->assertOk()
+        ->assertSee('40.000')
+        ->assertDontSee('35.000');
+});
+
 test('obligations report shows due items by period', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();

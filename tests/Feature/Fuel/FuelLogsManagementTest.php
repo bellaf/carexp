@@ -256,3 +256,48 @@ test('efficiency only calculates when current and immediately previous entries a
     expect((float) $middleLog->refresh()->calculated_efficiency)->toBe(20.0);
     expect((float) $latestLog->refresh()->calculated_efficiency)->toBe(10.0);
 });
+
+test('fuel log page shows weighted average efficiency across full tank intervals', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+        'volume_unit' => 'gallons',
+    ]);
+    $car = Car::factory()->for($user)->create();
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'log_date' => '2026-02-01',
+        'odometer' => 10000,
+        'volume' => 8,
+        'volume_unit' => 'gallons',
+        'full_tank' => true,
+        'calculated_efficiency' => null,
+    ]);
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'log_date' => '2026-02-02',
+        'odometer' => 10100,
+        'volume' => 5,
+        'volume_unit' => 'gallons',
+        'full_tank' => true,
+        'calculated_efficiency' => 20,
+    ]);
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'log_date' => '2026-02-03',
+        'odometer' => 10600,
+        'volume' => 10,
+        'volume_unit' => 'gallons',
+        'full_tank' => true,
+        'calculated_efficiency' => 50,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::fuel.index')
+        ->set('filterPeriod', 'all_time')
+        ->assertSee('40.000')
+        ->assertDontSee('35.000');
+});

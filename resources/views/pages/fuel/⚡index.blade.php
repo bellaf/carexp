@@ -4,6 +4,7 @@ use App\Models\Account;
 use App\Models\FuelLog;
 use App\Models\LedgerEntry;
 use App\Support\CurrencyFormatter;
+use App\Support\FuelEfficiencyCalculator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -206,12 +207,10 @@ new class extends Component {
     #[Computed]
     public function averageEfficiency(): ?float
     {
-        $average = $this->fuelLogs
-            ->where('full_tank', true)
-            ->whereNotNull('calculated_efficiency')
-            ->avg('calculated_efficiency');
-
-        return $average !== null ? round((float) $average, 3) : null;
+        return FuelEfficiencyCalculator::averageForLogs(
+            $this->fuelLogs,
+            (string) Auth::user()->measurement_system,
+        );
     }
 
     #[Computed]
