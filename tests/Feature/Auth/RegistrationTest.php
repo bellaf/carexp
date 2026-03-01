@@ -23,5 +23,8 @@ test('new users can register', function () {
         'email' => 'test@example.com',
         'is_admin' => 0,
         'is_approved' => 0,
+        'preferred_currency' => 'GBP',
+        'measurement_system' => 'imperial',
+        'volume_unit' => 'gallons',
     ]);
 });

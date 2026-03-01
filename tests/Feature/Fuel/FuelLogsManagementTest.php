@@ -137,7 +137,7 @@ test('imperial distance with liters volume calculates mpg using conversion', fun
         ->firstOrFail();
 
     expect($fuelLog->volume_unit)->toBe('liters');
-    expect((float) $fuelLog->calculated_efficiency)->toBe(round(100 / (10 * 0.2641720524), 3));
+    expect((float) $fuelLog->calculated_efficiency)->toBe(round(100 / (10 / 4.54609), 3));
 });
 
 test('car current odometer syncs from most recent fuel log on create update and delete', function () {

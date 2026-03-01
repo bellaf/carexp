@@ -5,7 +5,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 new class extends Component {
-    public string $preferred_currency = 'USD';
+    public string $preferred_currency = 'GBP';
     public string $measurement_system = 'imperial';
     public string $volume_unit = 'gallons';
 
@@ -13,9 +13,9 @@ new class extends Component {
      * @var array<string, string>
      */
     public array $currencyOptions = [
+        'GBP' => 'GBP',
         'USD' => 'USD',
         'EUR' => 'EUR',
-        'GBP' => 'GBP',
         'CAD' => 'CAD',
         'AUD' => 'AUD',
     ];
@@ -24,7 +24,7 @@ new class extends Component {
      * @var array<string, string>
      */
     public array $volumeUnitOptions = [
-        'gallons' => 'Gallons',
+        'gallons' => 'Imperial Gallons',
         'liters' => 'Liters',
     ];
 
@@ -35,7 +35,7 @@ new class extends Component {
     {
         $user = Auth::user();
 
-        $this->preferred_currency = $user->preferred_currency ?: 'USD';
+        $this->preferred_currency = $user->preferred_currency ?: 'GBP';
         $this->measurement_system = $user->measurement_system ?: 'imperial';
         $this->volume_unit = $user->volume_unit ?: ($this->measurement_system === 'metric' ? 'liters' : 'gallons');
     }
@@ -71,7 +71,7 @@ new class extends Component {
             </flux:select>
 
             <flux:radio.group wire:model="measurement_system" :label="__('Measurement system')">
-                <flux:radio value="imperial" :label="__('MPH / Gallons')" />
+                <flux:radio value="imperial" :label="__('MPH / Imperial Gallons')" />
                 <flux:radio value="metric" :label="__('KM / Liters')" />
             </flux:radio.group>
 

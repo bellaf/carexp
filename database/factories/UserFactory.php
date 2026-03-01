@@ -36,7 +36,7 @@ class UserFactory extends Factory
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
-            'preferred_currency' => 'USD',
+            'preferred_currency' => 'GBP',
             'measurement_system' => 'imperial',
             'volume_unit' => 'gallons',
             'ui_theme' => 'classic',

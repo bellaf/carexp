@@ -32,6 +32,9 @@ class CreateNewUser implements CreatesNewUsers
             'is_approved' => false,
             'approved_at' => null,
             'approved_by' => null,
+            'preferred_currency' => 'GBP',
+            'measurement_system' => 'imperial',
+            'volume_unit' => 'gallons',
         ]);
     }
 }

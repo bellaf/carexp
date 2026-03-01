@@ -240,6 +240,7 @@ test('obligations report shows due items by period', function () {
 
 test('ownership report shows all time cost per distance metrics by car', function () {
     $user = User::factory()->create([
+        'preferred_currency' => 'USD',
         'measurement_system' => 'imperial',
     ]);
     $car = Car::factory()->for($user)->create([
@@ -297,6 +298,7 @@ test('ownership report shows all time cost per distance metrics by car', functio
 
 test('ownership report shows sold vehicle closure metrics', function () {
     $user = User::factory()->create([
+        'preferred_currency' => 'USD',
         'measurement_system' => 'imperial',
     ]);
     $car = Car::factory()->for($user)->create([
@@ -342,6 +344,7 @@ test('ownership report shows sold vehicle closure metrics', function () {
 
 test('ownership report falls back to recorded odometer history when purchase odometer is missing', function () {
     $user = User::factory()->create([
+        'preferred_currency' => 'USD',
         'measurement_system' => 'imperial',
     ]);
     $car = Car::factory()->for($user)->create([

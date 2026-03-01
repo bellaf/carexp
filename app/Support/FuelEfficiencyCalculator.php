@@ -40,11 +40,11 @@ class FuelEfficiencyCalculator
         if ($measurementSystem === 'metric') {
             return $volumeUnit === 'liters'
                 ? $volume
-                : ($volume * 3.785411784);
+                : ($volume * 4.54609);
         }
 
         return $volumeUnit === 'gallons'
             ? $volume
-            : ($volume * 0.2641720524);
+            : ($volume / 4.54609);
     }
 }

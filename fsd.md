@@ -53,6 +53,11 @@ Primary outcomes:
   - `volume_unit` (gallons/liters)
   - `ui_theme` (`classic`, `warm-paper`, `soft-automotive`, `editorial-neutral`)
   - appearance mode remains Light / Dark / System
+- Default preference baseline for new users is:
+  - `preferred_currency = GBP`
+  - `measurement_system = imperial`
+  - `volume_unit = gallons`
+- In the current app meaning, `gallons` refers to imperial gallons, not US gallons.
 
 ### 2. Cars
 - Add/edit/archive/restore cars
@@ -65,11 +70,16 @@ Primary outcomes:
 - Auto calculations:
   - `price_per_unit` if omitted
   - efficiency for full-tank sequences
+  - stored `calculated_efficiency` values are persisted on each `fuel_logs` row rather than recalculated on page load
+  - imperial MPG calculations use imperial gallons, not US gallons
 - Ledger sync:
   - Creates/updates linked expense ledger entry (`source_type=fuel_log`)
   - Deletes linked ledger entry when fuel row is deleted
 - Car odometer sync:
   - Car `current_odometer` is recalculated from latest fuel log per car
+- Backfill support:
+  - Existing stored MPG values can be recalculated with `php artisan app:recalculate-fuel-efficiencies`
+  - Optional scoping is available with `--user-id` and `--car-id`
 
 ### 4. Maintenance
 - Records: service type/provider/date, optional odometer, notes, next due date/odometer
@@ -186,6 +196,7 @@ Primary outcomes:
   - monthly trend tables/cards
   - category totals
   - fuel spend, volume, average price, and average efficiency
+- Fuel average efficiency is calculated at runtime from stored per-log efficiency values using a weighted average by fuel volume.
 
 ### 12. Obligations
 - Dedicated obligations page for insurance, tax/registration, and MOT/inspection
@@ -309,6 +320,10 @@ This standard is now the default expectation for all new list-style features unl
 11. Mileage logs are operational records only:
 - they do not create or update `ledger_entries`
 - they do not affect financial reports or dashboard net cost totals
+12. Fuel efficiency semantics:
+- Per-row MPG/KM-L values are stored in `fuel_logs.calculated_efficiency`
+- These stored values are recalculated when fuel logs are created, edited, deleted, or when the dedicated recalculation command is run
+- Aggregate average efficiency values are computed at runtime from those stored per-log values
 
 ## Accounts and Categories
 - Accounts are used for ledger classification (expense/income groups).
@@ -362,6 +377,9 @@ This standard is now the default expectation for all new list-style features unl
 
 ## Operational Notes
 - Recurring generation in production should be executed via scheduler/cron (`app:generate-recurring-transactions`).
+- After deploying the imperial-gallon MPG change to an environment with existing fuel data, run:
+  - `php artisan migrate --force`
+  - `php artisan app:recalculate-fuel-efficiencies`
 - During development, the recurring page includes a manual trigger button for due entry generation.
 - A simple repo-level deploy script exists: `./deploy.sh`
 - Current deploy script flow:

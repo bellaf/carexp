@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
             'is_approved' => true,
             'approved_at' => now(),
             'email_verified_at' => now(),
-            'preferred_currency' => 'USD',
+            'preferred_currency' => 'GBP',
             'measurement_system' => 'imperial',
             'volume_unit' => 'gallons',
             'ui_theme' => 'classic',

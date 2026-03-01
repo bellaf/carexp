@@ -10,7 +10,7 @@ use Database\Seeders\ExpenseCategorySeeder;
 test('new users receive default car tracking preferences', function () {
     $user = User::factory()->create()->fresh();
 
-    expect($user->preferred_currency)->toBe('USD')
+    expect($user->preferred_currency)->toBe('GBP')
         ->and($user->measurement_system)->toBe('imperial')
         ->and($user->volume_unit)->toBe('gallons')
         ->and($user->timezone)->toBe('UTC');
