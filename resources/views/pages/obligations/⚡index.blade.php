@@ -574,6 +574,7 @@ new class extends Component {
                                                         size="sm"
                                                         class="text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
                                                         wire:click="deleteAttachment({{ $attachment->id }})"
+                                                        wire:confirm="{{ __('Delete this attachment?') }}"
                                                     >
                                                         {{ __('Delete') }}
                                                     </flux:button>
