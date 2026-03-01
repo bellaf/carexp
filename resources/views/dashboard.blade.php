@@ -70,7 +70,7 @@
                         <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Configure these in the Quick Actions page.') }}</flux:text>
                     </div>
 
-                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
                         @foreach ($quickActions as $quickAction)
                             @php
                                 $mileageCarId = $quickAction->car_id ?? $currentCar?->id;
@@ -87,8 +87,8 @@
                                     'fuel_volume_input' => $quickAction->fuel_volume !== null && (float) $quickAction->fuel_volume > 0 ? (string) $quickAction->fuel_volume : '',
                                     'fuel_full_tank' => (bool) $quickAction->fuel_full_tank,
                                     'mileage_locations' => $quickAction->mileage_locations ?? '',
+                                    'mileage_distance' => (int) ($quickAction->mileage_distance ?? 0),
                                     'start_odometer_input' => (string) (($mileageCarId !== null ? ($latestMileageEndByCar[$mileageCarId] ?? null) : null) ?? $quickAction->car?->current_odometer ?? $currentCar?->current_odometer ?? 0),
-                                    'end_odometer_input' => '',
                                     'requires_mileage' => $quickAction->entry_target === 'mileage_log',
                                     'odometer_input' => (string) ($quickAction->car?->current_odometer ?? $currentCar?->current_odometer ?? 0),
                                     'requires_user_input' => $quickAction->entry_target === 'mileage_log' || $quickAction->entry_target === 'fuel_log' || (float) $quickAction->amount <= 0 || ($quickAction->entry_target === 'fuel_log' && ((float) ($quickAction->fuel_volume ?? 0) <= 0)),
@@ -569,6 +569,10 @@
                             <span x-text="selectedQuickAction?.fuel_full_tank ? '{{ __('Yes') }}' : '{{ __('No') }}'"></span>
                         </div>
                         <div x-show="selectedQuickAction?.entry_target === 'mileage_log'">
+                            <strong>{{ __('Miles') }}:</strong>
+                            <span x-text="selectedQuickAction?.mileage_distance ? `${selectedQuickAction.mileage_distance} {{ __('miles') }}` : '{{ __('N/A') }}'"></span>
+                        </div>
+                        <div x-show="selectedQuickAction?.entry_target === 'mileage_log'">
                             <strong>{{ __('Locations') }}:</strong>
                             <span x-text="selectedQuickAction?.mileage_locations || '{{ __('N/A') }}'"></span>
                         </div>
@@ -588,17 +592,6 @@
                                     min="0"
                                     step="1"
                                     x-model="selectedQuickAction.start_odometer_input"
-                                    x-bind:required="selectedQuickAction?.entry_target === 'mileage_log'"
-                                />
-                            </div>
-                            <div x-show="selectedQuickAction?.entry_target === 'mileage_log'" x-cloak>
-                                <flux:input
-                                    :label="__('End Odometer')"
-                                    type="number"
-                                    name="end_odometer"
-                                    min="0"
-                                    step="1"
-                                    x-model="selectedQuickAction.end_odometer_input"
                                     x-bind:required="selectedQuickAction?.entry_target === 'mileage_log'"
                                 />
                             </div>

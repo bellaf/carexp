@@ -721,3 +721,31 @@ test('dashboard quick actions include confirmation modal content', function () {
         ->assertSee('Run Quick Action')
         ->assertSeeText('Confirm & Post');
 });
+
+test('dashboard shows up to eight quick actions', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'is_default' => true,
+    ]);
+    $category = ExpenseCategory::factory()->create([
+        'key' => 'tolls',
+        'name' => 'Tolls',
+    ]);
+
+    foreach (range(1, 9) as $index) {
+        QuickAction::factory()->for($user)->create([
+            'car_id' => $car->id,
+            'expense_category_id' => $category->id,
+            'name' => sprintf('Quick Action %02d', $index),
+            'sort_order' => $index,
+            'is_active' => true,
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Quick Action 01')
+        ->assertSee('Quick Action 08')
+        ->assertDontSee('Quick Action 09');
+});

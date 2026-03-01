@@ -210,7 +210,7 @@ Route::get('dashboard', function (Request $request) {
         ->where('is_active', true)
         ->orderBy('sort_order')
         ->orderBy('name')
-        ->limit(4)
+        ->limit(8)
         ->get();
 
     $quickActionCarIds = $quickActions
@@ -362,7 +362,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'fuel_volume' => ['nullable', 'numeric', 'min:0.001'],
             'odometer' => ['nullable', 'integer', 'min:0'],
             'start_odometer' => ['nullable', 'integer', 'min:0'],
-            'end_odometer' => ['nullable', 'integer', 'min:0'],
             'locations' => ['nullable', 'string', 'max:255'],
             'full_tank' => ['nullable', 'boolean'],
         ]);
@@ -383,18 +382,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     ->orderByDesc('log_date')
                     ->orderByDesc('id')
                     ->value('end_odometer') ?? $car->current_odometer ?? 0);
-            $endOdometer = isset($validated['end_odometer']) ? (int) $validated['end_odometer'] : null;
+            $distance = $quickAction->mileage_distance !== null ? (int) $quickAction->mileage_distance : 0;
 
-            if ($endOdometer === null) {
+            if ($distance <= 0) {
                 return redirect()
                     ->route('dashboard')
-                    ->withErrors(['quick_action_end_odometer' => __('Please enter an end odometer reading for this mileage quick action.')]);
-            }
-
-            if ($endOdometer < $startOdometer) {
-                return redirect()
-                    ->route('dashboard')
-                    ->withErrors(['quick_action_end_odometer' => __('End odometer must be greater than or equal to the start odometer.')]);
+                    ->withErrors(['quick_action_mileage_distance' => __('Please set standard miles for this mileage quick action.')]);
             }
 
             MileageLog::query()->create([
@@ -402,7 +395,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'car_id' => $car->id,
                 'log_date' => now()->toDateString(),
                 'start_odometer' => $startOdometer,
-                'end_odometer' => $endOdometer,
+                'end_odometer' => $startOdometer + $distance,
                 'locations' => filled($validated['locations'] ?? null)
                     ? trim((string) $validated['locations'])
                     : ($quickAction->mileage_locations ?: null),
