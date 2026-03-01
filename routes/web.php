@@ -291,6 +291,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('history', ServiceHistoryController::class)->name('history.index');
     Route::livewire('users', 'pages::users.index')->name('users.index');
     Route::livewire('cars', 'pages::cars.index')->name('cars.index');
+    Route::livewire('accounts', 'pages::accounts.index')->name('accounts.index');
     Route::livewire('obligations', 'pages::obligations.index')->name('obligations.index');
     Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
     Route::livewire('recurring', 'pages::recurring.index')->name('recurring.index');

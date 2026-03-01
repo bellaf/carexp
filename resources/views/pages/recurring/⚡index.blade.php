@@ -250,6 +250,12 @@ new class extends Component {
         return Account::query()
             ->where('group', $this->form['entry_type'])
             ->where('is_active', true)
+            ->where(function ($query): void {
+                $query->where('is_system', true)
+                    ->orWhere(fn ($customQuery) => $customQuery
+                        ->where('is_system', false)
+                        ->where('user_id', Auth::id()));
+            })
             ->orderBy('name')
             ->get();
     }
@@ -269,7 +275,14 @@ new class extends Component {
             'form.account_id' => [
                 'required',
                 'integer',
-                Rule::exists('accounts', 'id')->where(fn ($query) => $query->where('group', $this->form['entry_type'])),
+                Rule::exists('accounts', 'id')->where(fn ($query) => $query
+                    ->where('group', $this->form['entry_type'])
+                    ->where('is_active', true)
+                    ->where(fn ($scopeQuery) => $scopeQuery
+                        ->where('is_system', true)
+                        ->orWhere(fn ($customQuery) => $customQuery
+                            ->where('is_system', false)
+                            ->where('user_id', Auth::id())))),
             ],
             'form.amount' => ['required', 'numeric', 'min:0.01'],
             'form.cadence' => ['required', Rule::in(['monthly', 'quarterly', 'yearly'])],
@@ -323,7 +336,7 @@ new class extends Component {
 
     protected function ensureDefaultAccounts(): void
     {
-        Account::query()->updateOrCreate(
+        Account::query()->firstOrCreate(
             ['key' => 'other_expense'],
             [
                 'user_id' => null,
@@ -334,7 +347,7 @@ new class extends Component {
             ],
         );
 
-        Account::query()->updateOrCreate(
+        Account::query()->firstOrCreate(
             ['key' => 'company_car_allowance_income'],
             [
                 'user_id' => null,

@@ -152,7 +152,9 @@ new class extends Component {
                 $query->whereIn('key', [
                     'company_car_allowance_income',
                     'company_business_fuel_tolls_income',
-                ])->orWhere('is_system', false);
+                ])->orWhere(fn ($customQuery) => $customQuery
+                    ->where('is_system', false)
+                    ->where('user_id', Auth::id()));
             })
             ->orderBy('name')
             ->get();
@@ -204,7 +206,18 @@ new class extends Component {
                 'integer',
                 Rule::exists('cars', 'id')->where(fn ($query) => $query->where('user_id', Auth::id())),
             ],
-            'form.account_id' => ['required', 'integer', Rule::exists('accounts', 'id')],
+            'form.account_id' => [
+                'required',
+                'integer',
+                Rule::exists('accounts', 'id')->where(fn ($query) => $query
+                    ->where('group', 'income')
+                    ->where('is_active', true)
+                    ->where(fn ($scopeQuery) => $scopeQuery
+                        ->where('is_system', true)
+                        ->orWhere(fn ($customQuery) => $customQuery
+                            ->where('is_system', false)
+                            ->where('user_id', Auth::id())))),
+            ],
             'form.reimbursed_date' => ['required', 'date'],
             'form.amount' => ['required', 'numeric', 'min:0.01'],
             'form.notes' => ['nullable', 'string'],
@@ -253,7 +266,7 @@ new class extends Component {
             'company_car_allowance_income' => 'Company Car Allowance',
             'company_business_fuel_tolls_income' => 'Company Business Fuel & Tolls Reimbursement',
         ] as $key => $name) {
-            Account::query()->updateOrCreate(
+            Account::query()->firstOrCreate(
                 ['key' => $key],
                 [
                     'user_id' => null,

@@ -30,7 +30,7 @@ class AccountSeeder extends Seeder
         ];
 
         foreach ($accounts as $account) {
-            Account::query()->updateOrCreate(
+            Account::query()->firstOrCreate(
                 ['key' => $account['key']],
                 [
                     'user_id' => null,
