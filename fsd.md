@@ -58,6 +58,7 @@ Primary outcomes:
   - `measurement_system = imperial`
   - `volume_unit = gallons`
 - In the current app meaning, `gallons` refers to imperial gallons, not US gallons.
+- Admin-only settings capability exists for operational features that should not be available to standard users.
 
 ### 2. Cars
 - Add/edit/archive/restore cars
@@ -232,6 +233,27 @@ Primary outcomes:
   - row/card click opens summary modal
   - modal shows event details, attachment links where applicable, and link out to the source page for editing
 
+### 14. Backups
+- Dedicated admin-only backup settings page at `/settings/backup`
+- Purpose:
+  - surface backup health/status inside the app without replacing server-level scheduling
+  - provide one-click manual database backup, cleanup, and health-check actions for administrators
+- Implementation:
+  - uses `spatie/laravel-backup`
+  - current backup scope is database-only, not a full application archive
+  - backup archives are listed from the configured backup disk and app backup root
+- Current outputs:
+  - latest backup timestamp and size
+  - total backup count
+  - backup health based on configured age threshold
+  - recent archive list
+- Current actions:
+  - `backup:run --only-db`
+  - `backup:clean`
+  - `backup:monitor`
+- Access:
+  - only administrator users can see or use the backup settings page
+
 ## UI/UX Conventions (Current)
 - Date display standard in app tables/views: `dd-mm-yyyy`
 - List views use simplified sheet-style tables
@@ -344,6 +366,7 @@ This standard is now the default expectation for all new list-style features unl
 - `/recurring`
 - `/quick-actions`
 - `/mileage`
+- `/settings/backup` (admin only)
 
 ## Testing and Environment
 - Feature coverage exists for:
@@ -360,6 +383,7 @@ This standard is now the default expectation for all new list-style features unl
   - Recurring CRUD and generation command
   - Reports page summary/category/fuel outputs
   - Appearance/theme preference updates
+  - Admin-only backup management page access and manual backup action wiring
 - PHPUnit test environment now uses SQLite:
   - `DB_CONNECTION=sqlite`
   - `DB_DATABASE=database/testing.sqlite`
@@ -377,6 +401,14 @@ This standard is now the default expectation for all new list-style features unl
 
 ## Operational Notes
 - Recurring generation in production should be executed via scheduler/cron (`app:generate-recurring-transactions`).
+- Backup automation now uses the Laravel scheduler with:
+  - `backup:run --only-db --disable-notifications --isolated`
+  - `backup:clean --disable-notifications`
+  - `backup:monitor --isolated`
+- Backup storage is config and `.env` driven:
+  - `BACKUP_DISK=backups` writes to the local Laravel disk at `storage/app/backups`
+  - `BACKUP_DISK=nas_backups` writes to the NAS-backed local disk path from `BACKUP_NAS_PATH`
+  - retention and health thresholds are controlled by `BACKUP_*` environment variables in `config/backup.php`
 - After deploying the imperial-gallon MPG change to an environment with existing fuel data, run:
   - `php artisan migrate --force`
   - `php artisan app:recalculate-fuel-efficiencies`
