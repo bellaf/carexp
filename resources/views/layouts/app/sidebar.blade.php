@@ -45,6 +45,9 @@
                     <flux:sidebar.item icon="wallet" :href="route('reimbursements.index')" :current="request()->routeIs('reimbursements.*')" wire:navigate>
                         {{ __('Reimbursements') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="folder" :href="route('accounts.index')" :current="request()->routeIs('accounts.*')" wire:navigate>
+                        {{ __('Accounts') }}
+                    </flux:sidebar.item>
                     @if (auth()->user()?->canManageUsers())
                         <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
                             {{ __('Users') }}
