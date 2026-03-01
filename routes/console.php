@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:generate-recurring-transactions')->daily();
+Schedule::command('backup:run --only-db --disable-notifications --isolated')->dailyAt('02:00');
+Schedule::command('backup:clean --disable-notifications')->dailyAt('02:30');
+Schedule::command('backup:monitor --isolated')->dailyAt('03:00');
