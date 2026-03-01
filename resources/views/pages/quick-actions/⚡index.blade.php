@@ -46,6 +46,7 @@ new class extends Component {
             'amount' => (string) $quickAction->amount,
             'fuel_volume' => $quickAction->fuel_volume !== null ? (string) $quickAction->fuel_volume : '',
             'fuel_full_tank' => (bool) $quickAction->fuel_full_tank,
+            'mileage_locations' => $quickAction->mileage_locations ?? '',
             'vendor' => $quickAction->vendor ?? '',
             'notes' => $quickAction->notes ?? '',
             'tags' => implode(', ', $quickAction->tags ?? []),
@@ -115,11 +116,12 @@ new class extends Component {
     {
         return [
             'form.name' => ['required', 'string', 'max:255'],
-            'form.entry_target' => ['required', Rule::in(['expense', 'fuel_log'])],
+            'form.entry_target' => ['required', Rule::in(['expense', 'fuel_log', 'mileage_log'])],
             'form.car_id' => ['nullable', 'integer', Rule::exists('cars', 'id')->where(fn ($query) => $query->where('user_id', Auth::id()))],
             'form.amount' => ['nullable', 'numeric', 'min:0'],
             'form.fuel_volume' => ['nullable', 'numeric', 'min:0.001'],
             'form.fuel_full_tank' => ['boolean'],
+            'form.mileage_locations' => ['nullable', 'string', 'max:255'],
             'form.vendor' => ['nullable', 'string', 'max:255'],
             'form.notes' => ['nullable', 'string'],
             'form.tags' => ['nullable', 'string', 'max:255'],
@@ -147,7 +149,7 @@ new class extends Component {
      */
     protected function normalizeAttributes(array $form): array
     {
-        foreach (['car_id', 'vendor', 'notes'] as $field) {
+        foreach (['car_id', 'vendor', 'notes', 'mileage_locations'] as $field) {
             if ($form[$field] === '') {
                 $form[$field] = null;
             }
@@ -167,6 +169,7 @@ new class extends Component {
             'amount' => (float) ($form['amount'] ?: 0),
             'fuel_volume' => $form['fuel_volume'] !== '' && $form['fuel_volume'] !== null ? (float) $form['fuel_volume'] : null,
             'fuel_full_tank' => (bool) $form['fuel_full_tank'],
+            'mileage_locations' => $form['mileage_locations'],
             'vendor' => $form['vendor'],
             'notes' => $form['notes'],
             'tags' => $tags !== [] ? $tags : null,
@@ -184,6 +187,7 @@ new class extends Component {
             'amount' => '',
             'fuel_volume' => '',
             'fuel_full_tank' => true,
+            'mileage_locations' => '',
             'vendor' => '',
             'notes' => '',
             'tags' => '',
@@ -235,6 +239,7 @@ new class extends Component {
                     <flux:select wire:model.live="form.entry_target" :label="__('Target')" required>
                         <flux:select.option value="expense">{{ __('Expense Entry') }}</flux:select.option>
                         <flux:select.option value="fuel_log">{{ __('Fuel Log Entry') }}</flux:select.option>
+                        <flux:select.option value="mileage_log">{{ __('Mileage Log Entry') }}</flux:select.option>
                     </flux:select>
 
                     <flux:select wire:model="form.car_id" :label="__('Car (Optional)')">
@@ -246,8 +251,12 @@ new class extends Component {
                         @endforeach
                     </flux:select>
 
-                    <flux:input wire:model="form.amount" :label="__('Amount (Optional)')" type="number" min="0" step="0.01" />
-                    <flux:input wire:model="form.vendor" :label="__('Vendor (Optional)')" type="text" />
+                    <div x-data x-show="['expense', 'fuel_log'].includes($wire.form.entry_target)" x-cloak>
+                        <flux:input wire:model="form.amount" :label="__('Amount (Optional)')" type="number" min="0" step="0.01" />
+                    </div>
+                    <div x-data x-show="$wire.form.entry_target === 'expense'" x-cloak>
+                        <flux:input wire:model="form.vendor" :label="__('Vendor (Optional)')" type="text" />
+                    </div>
                     <flux:input wire:model="form.sort_order" :label="__('Sort Order')" type="number" min="0" step="1" />
 
                     <div x-data x-show="$wire.form.entry_target === 'fuel_log'" x-cloak>
@@ -255,6 +264,9 @@ new class extends Component {
                     </div>
                     <div x-data x-show="$wire.form.entry_target === 'fuel_log'" class="self-end" x-cloak>
                         <flux:checkbox wire:model="form.fuel_full_tank" :label="__('Full Tank')" />
+                    </div>
+                    <div x-data class="md:col-span-2" x-show="$wire.form.entry_target === 'mileage_log'" x-cloak>
+                        <flux:input wire:model="form.mileage_locations" :label="__('Standard Locations (comma separated)')" type="text" />
                     </div>
                 </div>
 
@@ -304,10 +316,14 @@ new class extends Component {
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <div class="font-medium">{{ $quickAction->name }}</div>
-                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $quickAction->entry_target === 'fuel_log' ? __('Fuel Log') : __('Expense') }}</div>
+                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ match ($quickAction->entry_target) {
+                                'fuel_log' => __('Fuel Log'),
+                                'mileage_log' => __('Mileage Log'),
+                                default => __('Expense'),
+                            } }}</div>
                         </div>
                         <div class="text-right text-sm">
-                            <div class="font-semibold">{{ $this->formatCurrency($quickAction->amount) }}</div>
+                            <div class="font-semibold">{{ $quickAction->entry_target === 'mileage_log' ? __('Odometer Prompt') : $this->formatCurrency($quickAction->amount) }}</div>
                             <div class="text-zinc-500 dark:text-zinc-400">{{ $quickAction->is_active ? __('Active') : __('Hidden') }}</div>
                         </div>
                     </div>
@@ -343,9 +359,13 @@ new class extends Component {
                             wire:click="editQuickAction({{ $quickAction->id }})"
                         >
                             <td class="px-3 py-2">{{ $quickAction->name }}</td>
-                            <td class="px-3 py-2">{{ $quickAction->entry_target === 'fuel_log' ? __('Fuel Log') : __('Expense') }}</td>
+                            <td class="px-3 py-2">{{ match ($quickAction->entry_target) {
+                                'fuel_log' => __('Fuel Log'),
+                                'mileage_log' => __('Mileage Log'),
+                                default => __('Expense'),
+                            } }}</td>
                             <td class="px-3 py-2">{{ $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default') }}</td>
-                            <td class="px-3 py-2 text-right">{{ $this->formatCurrency($quickAction->amount) }}</td>
+                            <td class="px-3 py-2 text-right">{{ $quickAction->entry_target === 'mileage_log' ? __('Prompted') : $this->formatCurrency($quickAction->amount) }}</td>
                             <td class="px-3 py-2">{{ $quickAction->is_active ? __('Active') : __('Hidden') }}</td>
                             <td class="px-3 py-2">{{ $quickAction->sort_order }}</td>
                         </tr>

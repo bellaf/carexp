@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\FuelLog;
 use App\Models\LedgerEntry;
 use App\Models\MaintenanceRecord;
+use App\Models\MileageLog;
 use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
 use App\Models\VehicleObligation;
@@ -205,11 +206,29 @@ Route::get('dashboard', function (Request $request) {
         ->get();
 
     $quickActions = $user->quickActions()
+        ->with('car')
         ->where('is_active', true)
         ->orderBy('sort_order')
         ->orderBy('name')
         ->limit(4)
         ->get();
+
+    $quickActionCarIds = $quickActions
+        ->pluck('car_id')
+        ->push($currentCar?->id)
+        ->filter()
+        ->unique()
+        ->values();
+
+    $latestMileageEndByCar = MileageLog::query()
+        ->where('user_id', $user->id)
+        ->when($quickActionCarIds->isNotEmpty(), fn ($query) => $query->whereIn('car_id', $quickActionCarIds))
+        ->orderByDesc('log_date')
+        ->orderByDesc('id')
+        ->get()
+        ->unique('car_id')
+        ->mapWithKeys(fn (MileageLog $mileageLog): array => [$mileageLog->car_id => $mileageLog->end_odometer])
+        ->all();
 
     $currentCarOwnershipMetrics = null;
 
@@ -304,6 +323,7 @@ Route::get('dashboard', function (Request $request) {
         'upcomingObligationsCount' => (int) $upcomingObligationsAll->count(),
         'upcomingObligations' => $upcomingObligations,
         'quickActions' => $quickActions,
+        'latestMileageEndByCar' => $latestMileageEndByCar,
         'totalTransactions' => (int) (clone $ledgerEntries)->count(),
         'transactions' => $transactions,
         'editableLedgerAccounts' => $editableLedgerAccounts,
@@ -328,6 +348,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
     Route::livewire('recurring', 'pages::recurring.index')->name('recurring.index');
     Route::livewire('quick-actions', 'pages::quick-actions.index')->name('quick-actions.index');
+    Route::livewire('mileage', 'pages::mileage.index')->name('mileage.index');
     Route::livewire('fuel', 'pages::fuel.index')->name('fuel.index');
     Route::livewire('maintenance', 'pages::maintenance.index')->name('maintenance.index');
     Route::livewire('reimbursements', 'pages::reimbursements.index')->name('reimbursements.index');
@@ -340,8 +361,56 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'amount' => ['nullable', 'numeric', 'min:0.01'],
             'fuel_volume' => ['nullable', 'numeric', 'min:0.001'],
             'odometer' => ['nullable', 'integer', 'min:0'],
+            'start_odometer' => ['nullable', 'integer', 'min:0'],
+            'end_odometer' => ['nullable', 'integer', 'min:0'],
+            'locations' => ['nullable', 'string', 'max:255'],
             'full_tank' => ['nullable', 'boolean'],
         ]);
+
+        $car = $quickAction->car_id !== null
+            ? $user->cars()->where('is_archived', false)->find($quickAction->car_id)
+            : $user->cars()->where('is_archived', false)->orderByDesc('is_default')->orderBy('id')->first();
+
+        if ($car === null) {
+            return redirect()->route('dashboard')->with('error', __('No active car is available for this quick action.'));
+        }
+
+        if ($quickAction->entry_target === 'mileage_log') {
+            $startOdometer = isset($validated['start_odometer'])
+                ? (int) $validated['start_odometer']
+                : (int) ($user->mileageLogs()
+                    ->where('car_id', $car->id)
+                    ->orderByDesc('log_date')
+                    ->orderByDesc('id')
+                    ->value('end_odometer') ?? $car->current_odometer ?? 0);
+            $endOdometer = isset($validated['end_odometer']) ? (int) $validated['end_odometer'] : null;
+
+            if ($endOdometer === null) {
+                return redirect()
+                    ->route('dashboard')
+                    ->withErrors(['quick_action_end_odometer' => __('Please enter an end odometer reading for this mileage quick action.')]);
+            }
+
+            if ($endOdometer < $startOdometer) {
+                return redirect()
+                    ->route('dashboard')
+                    ->withErrors(['quick_action_end_odometer' => __('End odometer must be greater than or equal to the start odometer.')]);
+            }
+
+            MileageLog::query()->create([
+                'user_id' => $user->id,
+                'car_id' => $car->id,
+                'log_date' => now()->toDateString(),
+                'start_odometer' => $startOdometer,
+                'end_odometer' => $endOdometer,
+                'locations' => filled($validated['locations'] ?? null)
+                    ? trim((string) $validated['locations'])
+                    : ($quickAction->mileage_locations ?: null),
+            ]);
+
+            return redirect()->route('dashboard');
+        }
+
         $configuredAmount = (float) $quickAction->amount;
         $amountToPost = $configuredAmount > 0
             ? $configuredAmount
@@ -351,14 +420,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()
                 ->route('dashboard')
                 ->withErrors(['quick_action_amount' => __('Please enter an amount for this quick action.')]);
-        }
-
-        $car = $quickAction->car_id !== null
-            ? $user->cars()->where('is_archived', false)->find($quickAction->car_id)
-            : $user->cars()->where('is_archived', false)->orderByDesc('is_default')->orderBy('id')->first();
-
-        if ($car === null) {
-            return redirect()->route('dashboard')->with('error', __('No active car is available for this quick action.'));
         }
 
         $accountKey = $quickAction->entry_target === 'fuel_log'

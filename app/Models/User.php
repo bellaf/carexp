@@ -104,6 +104,11 @@ class User extends Authenticatable
         return $this->hasMany(QuickAction::class);
     }
 
+    public function mileageLogs(): HasMany
+    {
+        return $this->hasMany(MileageLog::class);
+    }
+
     public function vehicleObligations(): HasMany
     {
         return $this->hasMany(VehicleObligation::class);

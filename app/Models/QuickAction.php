@@ -23,6 +23,7 @@ class QuickAction extends Model
         'amount',
         'fuel_volume',
         'fuel_full_tank',
+        'mileage_locations',
         'vendor',
         'notes',
         'tags',
