@@ -480,6 +480,85 @@ test('dashboard ledger delete removes obligation financial entry and clears obli
     ]);
 });
 
+test('dashboard ledger update edits reimbursement ledger entries', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    $incomeAccount = Account::factory()->create([
+        'key' => 'company_car_allowance_income',
+        'name' => 'Company Car Allowance',
+        'group' => 'income',
+        'is_system' => true,
+    ]);
+
+    $updatedIncomeAccount = Account::factory()->create([
+        'key' => 'company_business_fuel_tolls_income',
+        'name' => 'Company Business Fuel & Tolls Reimbursement',
+        'group' => 'income',
+        'is_system' => true,
+    ]);
+
+    $ledgerEntry = $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $incomeAccount->id,
+        'entry_date' => '2026-03-01',
+        'entry_type' => 'income',
+        'amount' => 80.00,
+        'source_type' => 'reimbursement',
+        'source_id' => null,
+        'reference' => 'Allowance',
+        'notes' => 'Original note',
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('dashboard.ledger.update', $ledgerEntry), [
+            'entry_date' => '2026-03-05',
+            'account_id' => $updatedIncomeAccount->id,
+            'amount' => '95.50',
+            'reference' => 'Adjusted allowance',
+            'notes' => 'Updated note',
+        ])
+        ->assertRedirect(route('dashboard'));
+
+    $ledgerEntry->refresh();
+
+    expect($ledgerEntry->entry_date->format('Y-m-d'))->toBe('2026-03-05')
+        ->and($ledgerEntry->account_id)->toBe($updatedIncomeAccount->id)
+        ->and((float) $ledgerEntry->amount)->toBe(95.5)
+        ->and($ledgerEntry->reference)->toBe('Adjusted allowance')
+        ->and($ledgerEntry->notes)->toBe('Updated note');
+});
+
+test('dashboard ledger update rejects source-managed entries', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    $fuelAccount = Account::factory()->create([
+        'key' => 'fuel_expense',
+        'name' => 'Fuel',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    $ledgerEntry = $user->ledgerEntries()->create([
+        'car_id' => $car->id,
+        'account_id' => $fuelAccount->id,
+        'entry_date' => '2026-03-01',
+        'entry_type' => 'expense',
+        'amount' => 45.00,
+        'source_type' => 'fuel_log',
+        'source_id' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('dashboard.ledger.update', $ledgerEntry), [
+            'entry_date' => '2026-03-05',
+            'account_id' => $fuelAccount->id,
+            'amount' => '50.00',
+        ])
+        ->assertForbidden();
+});
+
 test('service due indicator is based on maintenance due dates, not recurring schedules', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();

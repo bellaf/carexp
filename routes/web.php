@@ -249,6 +249,37 @@ Route::get('dashboard', function (Request $request) {
         ->paginate(50)
         ->withQueryString();
 
+    $editableLedgerAccounts = [
+        'expense' => Account::query()
+            ->where('group', 'expense')
+            ->where('is_active', true)
+            ->where(function ($query) use ($user): void {
+                $query->where('is_system', true)
+                    ->orWhere(fn ($customQuery) => $customQuery
+                        ->where('is_system', false)
+                        ->where('user_id', $user->id));
+            })
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Account $account): array => ['id' => $account->id, 'name' => $account->name])
+            ->values()
+            ->all(),
+        'income' => Account::query()
+            ->where('group', 'income')
+            ->where('is_active', true)
+            ->where(function ($query) use ($user): void {
+                $query->where('is_system', true)
+                    ->orWhere(fn ($customQuery) => $customQuery
+                        ->where('is_system', false)
+                        ->where('user_id', $user->id));
+            })
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Account $account): array => ['id' => $account->id, 'name' => $account->name])
+            ->values()
+            ->all(),
+    ];
+
     return view('dashboard', [
         'currencyCode' => $user->preferred_currency,
         'currentCar' => $currentCar,
@@ -275,6 +306,7 @@ Route::get('dashboard', function (Request $request) {
         'quickActions' => $quickActions,
         'totalTransactions' => (int) (clone $ledgerEntries)->count(),
         'transactions' => $transactions,
+        'editableLedgerAccounts' => $editableLedgerAccounts,
         'transactionTypeOptions' => $transactionTypeOptions,
         'periodOptions' => $periodOptions,
         'selectedTransactionType' => $selectedTransactionType,
@@ -501,6 +533,42 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         return redirect()->route('dashboard', $request->only(['transaction_type', 'period', 'page']));
     })->name('dashboard.ledger.delete');
+
+    Route::put('dashboard/ledger/{ledgerEntry}', function (Request $request, LedgerEntry $ledgerEntry) {
+        abort_unless($ledgerEntry->user_id === $request->user()->id, 403);
+        abort_unless(in_array($ledgerEntry->source_type, [null, 'manual', 'reimbursement', 'recurring'], true), 403);
+
+        $validated = $request->validate([
+            'entry_date' => ['required', 'date'],
+            'account_id' => [
+                'required',
+                'integer',
+                \Illuminate\Validation\Rule::exists('accounts', 'id')->where(fn ($query) => $query
+                    ->where('group', $ledgerEntry->entry_type)
+                    ->where('is_active', true)
+                    ->where(function ($scopeQuery) use ($request): void {
+                        $scopeQuery->where('is_system', true)
+                            ->orWhere(fn ($customQuery) => $customQuery
+                                ->where('is_system', false)
+                                ->where('user_id', $request->user()->id));
+                    })),
+            ],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $ledgerEntry->update([
+            'entry_date' => $validated['entry_date'],
+            'account_id' => (int) $validated['account_id'],
+            'amount' => (float) $validated['amount'],
+            'reference' => $validated['reference'] ?: null,
+            'notes' => $validated['notes'] ?: null,
+            'source_id' => $ledgerEntry->source_type === 'reimbursement' ? null : $ledgerEntry->source_id,
+        ]);
+
+        return redirect()->route('dashboard', $request->only(['transaction_type', 'period', 'page']));
+    })->name('dashboard.ledger.update');
 
     Route::put('dashboard/recurring/{recurringTransaction}', function (Request $request, RecurringTransaction $recurringTransaction) {
         abort_unless($recurringTransaction->user_id === $request->user()->id, 403);

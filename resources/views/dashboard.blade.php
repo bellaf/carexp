@@ -719,7 +719,39 @@
         </div>
 
         <div x-show="activeTab === 'ledger'" class="space-y-6">
-            <flux:card class="space-y-4" x-data="{ showEntryModal: false, selectedEntry: null }">
+            <flux:card
+                class="space-y-4"
+                x-data="{
+                    showEntryModal: false,
+                    isEditingEntry: false,
+                    selectedEntry: null,
+                    editableLedgerAccounts: {{ Illuminate\Support\Js::from($editableLedgerAccounts) }},
+                    editForm: { entry_date: '', account_id: '', amount: '', reference: '', notes: '' },
+                    openEntry(entry) {
+                        this.selectedEntry = entry;
+                        this.isEditingEntry = false;
+                        this.editForm = {
+                            entry_date: entry.entry_date_raw ?? '',
+                            account_id: entry.account_id ? String(entry.account_id) : '',
+                            amount: entry.amount_raw ?? '',
+                            reference: entry.reference_raw ?? '',
+                            notes: entry.notes_raw ?? '',
+                        };
+                        this.showEntryModal = true;
+                    },
+                    closeEntryModal() {
+                        this.showEntryModal = false;
+                        this.isEditingEntry = false;
+                    },
+                    startEditingEntry() {
+                        if (! this.selectedEntry?.editable) return;
+                        this.isEditingEntry = true;
+                    },
+                    accountOptionsForEntry() {
+                        return this.editableLedgerAccounts[this.selectedEntry?.entry_type ?? 'expense'] ?? [];
+                    }
+                }"
+            >
                 <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-3">
                     <div class="w-full sm:w-64">
                         <flux:label for="transaction_type">{{ __('Transaction Type') }}</flux:label>
@@ -775,14 +807,29 @@
                                     'expense' => $entry->entry_type === 'expense' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-',
                                     'income' => $entry->entry_type === 'income' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-',
                                     'entry_type' => $entry->entry_type,
+                                    'entry_date_raw' => $entry->entry_date->format('Y-m-d'),
+                                    'account_id' => $entry->account_id,
+                                    'amount_raw' => number_format((float) $entry->amount, 2, '.', ''),
+                                    'reference_raw' => $entry->reference ?? '',
+                                    'notes_raw' => $entry->notes ?? '',
                                     'notes' => $entry->notes ?: __('N/A'),
+                                    'reference' => $entry->reference ?: __('N/A'),
+                                    'editable' => in_array($entry->source_type, [null, 'manual', 'reimbursement', 'recurring'], true),
+                                    'update_url' => route('dashboard.ledger.update', $entry),
                                     'delete_url' => route('dashboard.ledger.delete', $entry),
+                                    'edit_help' => match ($entry->source_type) {
+                                        'fuel_log' => __('This transaction is managed from the Fuel Log screen.'),
+                                        'maintenance_record' => __('This transaction is managed from the Maintenance screen.'),
+                                        'expense' => __('This transaction is managed from the Expenses screen.'),
+                                        'vehicle_obligation' => __('This transaction is managed from the Obligations screen.'),
+                                        default => __('This ledger entry can be edited here.'),
+                                    },
                                 ];
                             @endphp
                             <button
                                 type="button"
                                 class="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 text-left hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900"
-                                x-on:click='selectedEntry = @json($entrySummary); showEntryModal = true'
+                                x-on:click='openEntry(@json($entrySummary))'
                             >
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
@@ -840,16 +887,31 @@
                                             'expense' => $entry->entry_type === 'expense' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-',
                                             'income' => $entry->entry_type === 'income' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-',
                                             'entry_type' => $entry->entry_type,
+                                            'entry_date_raw' => $entry->entry_date->format('Y-m-d'),
+                                            'account_id' => $entry->account_id,
+                                            'amount_raw' => number_format((float) $entry->amount, 2, '.', ''),
+                                            'reference_raw' => $entry->reference ?? '',
+                                            'notes_raw' => $entry->notes ?? '',
                                             'notes' => $entry->notes ?: __('N/A'),
+                                            'reference' => $entry->reference ?: __('N/A'),
+                                            'editable' => in_array($entry->source_type, [null, 'manual', 'reimbursement', 'recurring'], true),
+                                            'update_url' => route('dashboard.ledger.update', $entry),
                                             'delete_url' => route('dashboard.ledger.delete', $entry),
+                                            'edit_help' => match ($entry->source_type) {
+                                                'fuel_log' => __('This transaction is managed from the Fuel Log screen.'),
+                                                'maintenance_record' => __('This transaction is managed from the Maintenance screen.'),
+                                                'expense' => __('This transaction is managed from the Expenses screen.'),
+                                                'vehicle_obligation' => __('This transaction is managed from the Obligations screen.'),
+                                                default => __('This ledger entry can be edited here.'),
+                                            },
                                         ];
                                     @endphp
 
                                     <tr
                                         class="cursor-pointer border-t border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900/70"
                                         tabindex="0"
-                                        x-on:click='selectedEntry = @json($entrySummary); showEntryModal = true'
-                                        x-on:keydown.enter='selectedEntry = @json($entrySummary); showEntryModal = true'
+                                        x-on:click='openEntry(@json($entrySummary))'
+                                        x-on:keydown.enter='openEntry(@json($entrySummary))'
                                     >
                                         <td class="px-3 py-2">{{ $entry->entry_date->format('d-m-Y') }}</td>
                                         <td class="px-3 py-2">{{ __($typeLabel) }}</td>
@@ -876,8 +938,8 @@
                     x-show="showEntryModal"
                     x-transition.opacity
                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
-                    x-on:click.self="showEntryModal = false"
-                    x-on:keydown.escape.window="showEntryModal = false"
+                    x-on:click.self="closeEntryModal()"
+                    x-on:keydown.escape.window="closeEntryModal()"
                 >
                     <div class="w-full max-w-lg rounded-xl border border-zinc-300 bg-white p-5 shadow-2xl ring-1 ring-black/10 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10">
                         <div class="flex items-start justify-between gap-3">
@@ -885,20 +947,57 @@
                                 <flux:heading>{{ __('Transaction Summary') }}</flux:heading>
                                 <flux:subheading x-text="selectedEntry?.date"></flux:subheading>
                             </div>
-                            <flux:button variant="ghost" x-on:click="showEntryModal = false">{{ __('Close') }}</flux:button>
+                            <flux:button variant="ghost" x-on:click="closeEntryModal()">{{ __('Close') }}</flux:button>
                         </div>
 
-                        <div class="mt-4 grid gap-2 text-sm">
+                        <div class="mt-4 grid gap-2 text-sm" x-show="!isEditingEntry">
                             <div><strong>{{ __('Type') }}:</strong> <span x-text="selectedEntry?.type"></span></div>
                             <div><strong>{{ __('Account') }}:</strong> <span x-text="selectedEntry?.account"></span></div>
                             <div><strong>{{ __('Description') }}:</strong> <span x-text="selectedEntry?.description"></span></div>
                             <div><strong>{{ __('Expense') }}:</strong> <span x-text="selectedEntry?.expense"></span></div>
                             <div><strong>{{ __('Income') }}:</strong> <span x-text="selectedEntry?.income"></span></div>
+                            <div><strong>{{ __('Reference') }}:</strong> <span x-text="selectedEntry?.reference"></span></div>
                             <div><strong>{{ __('Notes') }}:</strong> <span x-text="selectedEntry?.notes"></span></div>
                         </div>
 
+                        <form method="POST" x-bind:action="selectedEntry?.update_url" class="mt-4 space-y-4" x-show="isEditingEntry">
+                            @csrf
+                            @method('PUT')
+                            <input type="hidden" name="transaction_type" value="{{ $selectedTransactionType }}">
+                            <input type="hidden" name="period" value="{{ $selectedPeriod }}">
+                            @if (request()->has('page'))
+                                <input type="hidden" name="page" value="{{ request('page') }}">
+                            @endif
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <flux:input :label="__('Date')" type="date" name="entry_date" x-model="editForm.entry_date" required />
+                                <div>
+                                    <flux:label for="ledger_account_id">{{ __('Account') }}</flux:label>
+                                    <select id="ledger_account_id" name="account_id" x-model="editForm.account_id" class="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" required>
+                                        <template x-for="account in accountOptionsForEntry()" :key="account.id">
+                                            <option :value="String(account.id)" x-text="account.name"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <flux:input :label="__('Amount')" type="number" min="0.01" step="0.01" name="amount" x-model="editForm.amount" required />
+                                <flux:input :label="__('Reference')" type="text" name="reference" x-model="editForm.reference" />
+                            </div>
+                            <flux:input :label="__('Notes')" type="text" name="notes" x-model="editForm.notes" />
+
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    <flux:button type="submit" variant="primary">{{ __('Save Ledger Entry') }}</flux:button>
+                                    <flux:button type="button" variant="ghost" x-on:click="isEditingEntry = false">{{ __('Cancel') }}</flux:button>
+                                </div>
+                                <div></div>
+                            </div>
+                        </form>
+
+                        <div class="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300" x-show="selectedEntry && !selectedEntry.editable" x-text="selectedEntry?.edit_help"></div>
+
                         <div class="mt-4 flex items-center justify-between gap-3">
-                            <div></div>
+                            <div class="flex items-center gap-3">
+                                <flux:button type="button" variant="primary" x-show="selectedEntry?.editable && !isEditingEntry" x-on:click="startEditingEntry()">{{ __('Edit Ledger Entry') }}</flux:button>
+                            </div>
 
                             <form method="POST" x-bind:action="selectedEntry?.delete_url" onsubmit="return confirm('Delete this ledger entry only? Linked obligations will remain, but their financial posting will be removed.');">
                                 @csrf
