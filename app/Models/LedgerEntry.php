@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LedgerEntry extends Model
@@ -59,16 +58,6 @@ class LedgerEntry extends Model
     public function recurringTransaction(): BelongsTo
     {
         return $this->belongsTo(RecurringTransaction::class);
-    }
-
-    public function reimbursementAllocationsAsIncome(): HasMany
-    {
-        return $this->hasMany(ReimbursementAllocation::class, 'reimbursement_ledger_entry_id');
-    }
-
-    public function reimbursementAllocationsAsExpense(): HasMany
-    {
-        return $this->hasMany(ReimbursementAllocation::class, 'expense_ledger_entry_id');
     }
 
     public function expense(): HasOne

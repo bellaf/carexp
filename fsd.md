@@ -271,7 +271,6 @@ This standard is now the default expectation for all new list-style features unl
 - `accounts`
 - `expense_categories`
 - `quick_actions`
-- `reimbursement_allocations` (schema exists for allocation workflows)
 - `users.ui_theme` stores selected light-theme palette preference
 
 ## Key Business Rules
@@ -328,11 +327,10 @@ This standard is now the default expectation for all new list-style features unl
 - Legacy `carexp_test` MySQL test DB is no longer part of the project setup.
 
 ## Known Boundaries / Next Candidate Enhancements
-1. Reimbursement allocation workflow exists at schema level but is not yet exposed as a full UI flow.
-2. Account management UI is minimal; most defaults come from seeders/auto-ensure logic.
-3. Dashboard forecast currently projects from recurring schedules only; no scenario modeling beyond that.
-4. Reports are currently on-screen only; export/print/PDF is not yet implemented.
-5. Reporting remains intentionally simple; no charting or advanced analytics yet.
+1. Account management UI is minimal; most defaults come from seeders/auto-ensure logic.
+2. Dashboard forecast currently projects from recurring schedules only; no scenario modeling beyond that.
+3. Reports are currently on-screen only; export/print/PDF is not yet implemented.
+4. Reporting remains intentionally simple; no charting or advanced analytics yet.
 
 ## Schema Notes
 - The legacy `reimbursements` table has been removed.
