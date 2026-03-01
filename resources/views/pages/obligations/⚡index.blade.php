@@ -106,7 +106,7 @@ new class extends Component {
                 $obligation = Auth::user()->vehicleObligations()->create($attributes);
             }
 
-            $this->syncLedgerEntry($obligation, $amount);
+            $this->syncCompletedObligationLedgerEntry($obligation, $amount);
             app(AttachmentManager::class)->storeMany($obligation, $this->newAttachments);
         });
 
@@ -133,11 +133,19 @@ new class extends Component {
     {
         DB::transaction(function () use ($obligationId): void {
             $obligation = Auth::user()->vehicleObligations()->findOrFail($obligationId);
+            $amount = $obligation->amount !== null ? (float) $obligation->amount : null;
 
             $nextDueDate = CarbonImmutable::parse($obligation->due_date)->addYearNoOverflow();
             $nextStartDate = $obligation->start_date !== null
                 ? CarbonImmutable::parse($obligation->start_date)->addYearNoOverflow()->toDateString()
                 : null;
+
+            $obligation->update([
+                'is_active' => false,
+                'completed_at' => now(),
+            ]);
+
+            $this->syncCompletedObligationLedgerEntry($obligation->fresh(), $amount);
 
             Auth::user()->vehicleObligations()->create([
                 'car_id' => $obligation->car_id,
@@ -151,11 +159,6 @@ new class extends Component {
                 'notes' => $obligation->notes,
                 'is_active' => true,
                 'completed_at' => null,
-            ]);
-
-            $obligation->update([
-                'is_active' => false,
-                'completed_at' => now(),
             ]);
         });
 
@@ -362,6 +365,20 @@ new class extends Component {
         ];
     }
 
+    protected function syncCompletedObligationLedgerEntry(VehicleObligation $obligation, ?float $amount): void
+    {
+        if ($obligation->completed_at === null) {
+            if ($obligation->ledger_entry_id !== null) {
+                Auth::user()->ledgerEntries()->whereKey($obligation->ledger_entry_id)->delete();
+                $obligation->update(['ledger_entry_id' => null]);
+            }
+
+            return;
+        }
+
+        $this->syncLedgerEntry($obligation, $amount);
+    }
+
     protected function syncLedgerEntry(VehicleObligation $obligation, ?float $amount): void
     {
         if ($amount === null || $amount <= 0) {
@@ -493,6 +510,11 @@ new class extends Component {
                         <flux:input wire:model="form.start_date" :label="__('Start Date')" type="date" />
                         <flux:input wire:model="form.due_date" :label="__('Due Date')" type="date" required />
                         <flux:input wire:model="form.amount" :label="__('Renewal Cost')" type="number" min="0" step="0.01" />
+                    </div>
+
+                    <div class="space-y-2 rounded-xl border border-sky-200 bg-sky-50/80 p-4 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100">
+                        <div>{{ __('Saving an obligation stores the reminder only. The cost is posted to the ledger when you renew/complete the obligation, not when you first create it.') }}</div>
+                        <div>{{ __('Start Date is when the covered period begins. Due Date is when the renewal or expiry comes around.') }}</div>
                     </div>
 
                     <flux:textarea wire:model="form.notes" :label="__('Notes')" rows="4" />

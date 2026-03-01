@@ -170,9 +170,14 @@ Primary outcomes:
 ### 11. Obligations
 - Dedicated obligations page for insurance, tax/registration, and MOT/inspection
 - Records: car, type, provider, reference, start date, due date, renewal cost, notes, active flag
-- Ledger sync:
-  - Creates/updates linked expense ledger entry (`source_type=vehicle_obligation`) when amount > 0
-  - Removes linked ledger row if amount is cleared
+- Date semantics:
+  - `Start Date` = when the covered/valid period begins
+  - `Due Date` = when renewal, expiry, or completion comes around
+- Ledger behavior:
+  - Saving an active obligation stores the reminder record only
+  - No ledger expense is created when the obligation is first added
+  - Renewing/completing an obligation creates the linked expense ledger entry (`source_type=vehicle_obligation`) dated to the obligation due date
+  - If an active obligation has a legacy linked ledger row, saving it clears that row
 - Renewal workflow:
   - `Renew for Next Year` marks the current obligation complete and creates the next annual record
 - Attachments:
@@ -278,7 +283,8 @@ This standard is now the default expectation for all new list-style features unl
 - Due date within 14-day window
 - Odometer within 500 units of next due odometer (or past it)
 8. Recurring skip control advances `next_entry_date` by cadence without generating a ledger row.
-9. Dashboard net cost semantics:
+9. Obligations are reminder records first; they only become ledger expenses when renewed/completed.
+10. Dashboard net cost semantics:
 - Net cost = expenses - reimbursements
 - Negative net implies surplus/reimbursement exceeds spend
 

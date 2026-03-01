@@ -24,7 +24,7 @@ test('authenticated users can view obligations page', function () {
         ->assertSee('Tap a record to edit it.');
 });
 
-test('user can create obligation with linked ledger entry', function () {
+test('user can create obligation without posting a ledger entry yet', function () {
     Storage::fake('local');
 
     $user = User::factory()->create();
@@ -54,27 +54,19 @@ test('user can create obligation with linked ledger entry', function () {
 
     $obligation = VehicleObligation::query()->where('user_id', $user->id)->firstOrFail();
 
-    expect($obligation->ledger_entry_id)->not->toBeNull();
+    expect($obligation->ledger_entry_id)->toBeNull();
     expect($obligation->attachments)->toHaveCount(1);
     Storage::disk('local')->assertExists($obligation->attachments->first()->path);
 
-    $this->assertDatabaseHas('ledger_entries', [
-        'id' => $obligation->ledger_entry_id,
+    $this->assertDatabaseMissing('ledger_entries', [
         'user_id' => $user->id,
         'car_id' => $car->id,
-        'entry_type' => 'expense',
         'source_type' => 'vehicle_obligation',
         'source_id' => $obligation->id,
-        'amount' => '420.50',
-    ]);
-
-    $this->assertDatabaseHas('accounts', [
-        'key' => 'insurance_expense',
-        'name' => 'Insurance',
     ]);
 });
 
-test('user can update and delete obligation', function () {
+test('saving active obligation clears legacy linked ledger entry and delete still works', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
     $account = Account::factory()->create([
@@ -142,6 +134,7 @@ test('user can renew obligation and create next years entry', function () {
 
     expect($obligation->is_active)->toBeFalse();
     expect($obligation->completed_at)->not->toBeNull();
+    expect($obligation->ledger_entry_id)->not->toBeNull();
 
     $renewal = VehicleObligation::query()
         ->where('renewed_from_id', $obligation->id)
@@ -157,6 +150,15 @@ test('user can renew obligation and create next years entry', function () {
     expect($renewal->is_active)->toBeTrue();
     expect($renewal->completed_at)->toBeNull();
     expect($renewal->ledger_entry_id)->toBeNull();
+
+    $ledgerEntry = $user->ledgerEntries()->findOrFail($obligation->ledger_entry_id);
+
+    expect($ledgerEntry->car_id)->toBe($car->id);
+    expect($ledgerEntry->entry_date->format('Y-m-d'))->toBe('2027-02-28');
+    expect($ledgerEntry->entry_type)->toBe('expense');
+    expect($ledgerEntry->source_type)->toBe('vehicle_obligation');
+    expect($ledgerEntry->source_id)->toBe($obligation->id);
+    expect((float) $ledgerEntry->amount)->toBe(420.50);
 });
 
 test('obligations page shows docs attached hint for rows with attachments', function () {
