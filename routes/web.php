@@ -147,9 +147,19 @@ Route::get('dashboard', function (Request $request) {
         }
     }
 
+    $obligationForecastExpense = (float) $user->vehicleObligations()
+        ->where('is_active', true)
+        ->whereNull('completed_at')
+        ->whereNull('ledger_entry_id')
+        ->whereNotNull('amount')
+        ->whereDate('due_date', '>=', $forecastStart)
+        ->whereDate('due_date', '<=', $yearEnd)
+        ->sum('amount');
+
     $actualYearNetCost = $actualYearExpenses - $actualYearReimbursements;
-    $projectedRemainingNetCost = $recurringForecastExpense - $recurringForecastReimbursement;
-    $projectedYearExpenses = $actualYearExpenses + $recurringForecastExpense;
+    $projectedRemainingExpenses = $recurringForecastExpense + $obligationForecastExpense;
+    $projectedRemainingNetCost = $projectedRemainingExpenses - $recurringForecastReimbursement;
+    $projectedYearExpenses = $actualYearExpenses + $projectedRemainingExpenses;
     $projectedYearReimbursements = $actualYearReimbursements + $recurringForecastReimbursement;
     $projectedYearNetCost = $actualYearNetCost + $projectedRemainingNetCost;
 
@@ -310,7 +320,7 @@ Route::get('dashboard', function (Request $request) {
         'actualYearExpenses' => $actualYearExpenses,
         'actualYearReimbursements' => $actualYearReimbursements,
         'actualYearNetCost' => $actualYearNetCost,
-        'projectedRemainingExpenses' => $recurringForecastExpense,
+        'projectedRemainingExpenses' => $projectedRemainingExpenses,
         'projectedRemainingReimbursements' => $recurringForecastReimbursement,
         'projectedRemainingNetCost' => $projectedRemainingNetCost,
         'projectedYearExpenses' => $projectedYearExpenses,

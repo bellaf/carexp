@@ -367,6 +367,95 @@ test('dashboard shows actual ytd and projected remaining totals', function () {
         ->assertSee('320.00');
 });
 
+test('dashboard year-end projection includes active obligations due before year end', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'is_default' => true,
+    ]);
+    $expenseAccount = Account::factory()->create([
+        'key' => 'fuel_expense',
+        'name' => 'Fuel',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+    $incomeAccount = Account::factory()->create([
+        'key' => 'company_car_allowance_income',
+        'name' => 'Company Car Allowance',
+        'group' => 'income',
+        'is_system' => true,
+    ]);
+
+    LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $expenseAccount->id,
+        'entry_type' => 'expense',
+        'amount' => 200,
+        'entry_date' => now()->toDateString(),
+        'source_type' => 'expense',
+    ]);
+
+    LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $incomeAccount->id,
+        'entry_type' => 'income',
+        'amount' => 80,
+        'entry_date' => now()->toDateString(),
+        'source_type' => 'reimbursement',
+    ]);
+
+    DB::table('recurring_transactions')->insert([
+        'user_id' => $user->id,
+        'car_id' => $car->id,
+        'account_id' => $expenseAccount->id,
+        'entry_type' => 'expense',
+        'amount' => 300,
+        'cadence' => 'yearly',
+        'next_entry_date' => now()->addDay()->toDateString(),
+        'end_date' => null,
+        'reference' => 'Annual Policy',
+        'notes' => null,
+        'is_active' => true,
+        'last_generated_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('recurring_transactions')->insert([
+        'user_id' => $user->id,
+        'car_id' => $car->id,
+        'account_id' => $incomeAccount->id,
+        'entry_type' => 'income',
+        'amount' => 100,
+        'cadence' => 'yearly',
+        'next_entry_date' => now()->addDay()->toDateString(),
+        'end_date' => null,
+        'reference' => 'Allowance',
+        'notes' => null,
+        'is_active' => true,
+        'last_generated_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    VehicleObligation::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'obligation_type' => 'insurance',
+        'due_date' => now()->addDays(30)->toDateString(),
+        'amount' => 120.00,
+        'is_active' => true,
+        'completed_at' => null,
+        'ledger_entry_id' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Projected Remaining')
+        ->assertSee('420.00')
+        ->assertSee('Projected Year-End Net Cost')
+        ->assertSee('440.00');
+});
+
 test('dashboard shows upcoming service and recurring indicators for next 14 days', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
