@@ -316,15 +316,9 @@ new class extends Component {
                             <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Car') }}</dt>
                             <dd>{{ $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default') }}</dd>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Fuel Volume') }}</dt>
-                                <dd>{{ $quickAction->entry_target === 'fuel_log' && $quickAction->fuel_volume !== null ? number_format((float) $quickAction->fuel_volume, 3) : __('N/A') }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Order') }}</dt>
-                                <dd>{{ $quickAction->sort_order }}</dd>
-                            </div>
+                        <div>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Order') }}</dt>
+                            <dd>{{ $quickAction->sort_order }}</dd>
                         </div>
                     </dl>
                 </button>
@@ -338,7 +332,6 @@ new class extends Component {
                         <th class="px-3 py-2 font-medium">{{ __('Target') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Car') }}</th>
                         <th class="px-3 py-2 text-right font-medium">{{ __('Amount') }}</th>
-                        <th class="px-3 py-2 text-right font-medium">{{ __('Fuel Volume') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Status') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Order') }}</th>
                     </tr>
@@ -353,9 +346,6 @@ new class extends Component {
                             <td class="px-3 py-2">{{ $quickAction->entry_target === 'fuel_log' ? __('Fuel Log') : __('Expense') }}</td>
                             <td class="px-3 py-2">{{ $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default') }}</td>
                             <td class="px-3 py-2 text-right">{{ $this->formatCurrency($quickAction->amount) }}</td>
-                            <td class="px-3 py-2 text-right">
-                                {{ $quickAction->entry_target === 'fuel_log' && $quickAction->fuel_volume !== null ? number_format((float) $quickAction->fuel_volume, 3) : __('N/A') }}
-                            </td>
                             <td class="px-3 py-2">{{ $quickAction->is_active ? __('Active') : __('Hidden') }}</td>
                             <td class="px-3 py-2">{{ $quickAction->sort_order }}</td>
                         </tr>
