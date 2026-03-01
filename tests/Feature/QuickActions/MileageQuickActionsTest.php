@@ -20,6 +20,7 @@ test('users can create mileage quick actions with standard locations', function 
         ->set('form.name', 'Office Loop')
         ->set('form.entry_target', 'mileage_log')
         ->set('form.car_id', (string) $car->id)
+        ->set('form.mileage_distance', '36')
         ->set('form.mileage_locations', 'Office, Warehouse')
         ->set('form.sort_order', '2')
         ->call('saveQuickAction')
@@ -31,11 +32,12 @@ test('users can create mileage quick actions with standard locations', function 
         'entry_target' => 'mileage_log',
         'name' => 'Office Loop',
         'mileage_locations' => 'Office, Warehouse',
+        'mileage_distance' => 36,
         'amount' => '0.00',
     ]);
 });
 
-test('dashboard mileage quick action posts mileage log using prompted odometer readings', function () {
+test('dashboard mileage quick action posts mileage log using standard trip miles', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create([
         'current_odometer' => 15000,
@@ -56,13 +58,13 @@ test('dashboard mileage quick action posts mileage log using prompted odometer r
         'name' => 'Office Loop',
         'amount' => 0,
         'mileage_locations' => 'Office, Warehouse',
+        'mileage_distance' => 36,
         'is_active' => true,
     ]);
 
     $this->actingAs($user)
         ->post(route('dashboard.quick-actions.run', $quickAction), [
             'start_odometer' => 15025,
-            'end_odometer' => 15061,
         ])
         ->assertRedirect(route('dashboard'));
 

@@ -19,6 +19,7 @@ Primary outcomes:
 - Review summary, category, and fuel reports from logged data
 - Keep supporting documents attached to key records
 - Review a per-car unified service and ownership history
+- Record business mileage separately from financial activity
 
 ## Core Principles
 1. Ledger-centric finance model
@@ -137,20 +138,36 @@ Primary outcomes:
 
 ### 9. Quick actions
 - Purpose:
-  - User-defined one-click templates for frequent transactions (for example tolls, parking, fuel)
+  - User-defined one-click templates for frequent transactions and mileage presets (for example tolls, parking, fuel, standard work trips)
 - Definition fields:
-  - name, target (`expense` or `fuel_log`), optional car, optional amount, optional fuel volume, default full tank flag, vendor, notes, tags, active flag, sort order
+  - name, target (`expense`, `fuel_log`, or `mileage_log`), optional car, optional amount, optional fuel volume, default full tank flag, mileage locations, mileage distance, vendor, notes, tags, active flag, sort order
 - Dashboard behavior:
-  - Up to 4 active quick actions are shown
+  - Up to 8 active quick actions are shown
   - If no quick actions are defined, quick action buttons are hidden
   - Clicking a quick action opens a confirmation modal summary before posting
   - If definition amount is `0` or empty, modal requires entry of amount before confirm/post
   - If quick action target is fuel, modal can collect odometer, fuel volume, and full tank status
+  - If quick action target is mileage, modal prompts only for start odometer and optional locations override
+  - Quick action buttons are rendered in a responsive grid with two buttons per row on mobile and four per row on extra-large screens
 - Posting behavior:
   - Expense target: creates an `expenses` row and matching `ledger_entries` expense row
   - Fuel target: creates a `fuel_logs` row and matching `ledger_entries` expense row
+  - Mileage target: creates a `mileage_logs` row only; no ledger entry is created
 
-### 10. Reports
+### 10. Mileage logs
+- Dedicated mileage page at `/mileage`
+- Purpose:
+  - record simple business mileage without affecting finance or reporting totals
+- Records:
+  - date, car, start odometer, end odometer, locations
+- Defaulting behavior:
+  - new mileage entries default the start odometer from the latest mileage log end reading for that car
+  - if no prior mileage log exists, fallback is the car `current_odometer`
+- Quick action behavior:
+  - standard-trip mileage quick actions store fixed miles and standard locations
+  - running the quick action calculates end odometer as `start odometer + fixed miles`
+
+### 11. Reports
 - Dedicated reports page at `/reports`
 - Current report modes:
   - Summary
@@ -170,7 +187,7 @@ Primary outcomes:
   - category totals
   - fuel spend, volume, average price, and average efficiency
 
-### 11. Obligations
+### 12. Obligations
 - Dedicated obligations page for insurance, tax/registration, and MOT/inspection
 - Records: car, type, provider, reference, start date, due date, renewal cost, notes, active flag
 - Date semantics:
@@ -187,7 +204,7 @@ Primary outcomes:
   - JPG, PNG, PDF documents can be uploaded to obligation records
   - Attachments are shown in the record modal and flagged in list/history views
 
-### 12. History
+### 13. History
 - Dedicated history page at `/history`
 - Purpose:
   - show a unified per-car timeline across operational and financial events
@@ -266,6 +283,7 @@ This standard is now the default expectation for all new list-style features unl
 - `expenses` (linked by unique nullable `ledger_entry_id`)
 - `vehicle_obligations` (linked by unique nullable `ledger_entry_id`)
 - `recurring_transactions`
+- `mileage_logs` (user-owned, operational only, no ledger linkage)
 - `attachments` (polymorphic, user-owned, private file serving)
 - `cars` (includes `current_odometer`, `is_default`, `is_archived`)
 - `accounts`
@@ -288,6 +306,9 @@ This standard is now the default expectation for all new list-style features unl
 10. Dashboard net cost semantics:
 - Net cost = expenses - reimbursements
 - Negative net implies surplus/reimbursement exceeds spend
+11. Mileage logs are operational records only:
+- they do not create or update `ledger_entries`
+- they do not affect financial reports or dashboard net cost totals
 
 ## Accounts and Categories
 - Accounts are used for ledger classification (expense/income groups).
@@ -307,6 +328,7 @@ This standard is now the default expectation for all new list-style features unl
 - `/reimbursements`
 - `/recurring`
 - `/quick-actions`
+- `/mileage`
 
 ## Testing and Environment
 - Feature coverage exists for:
@@ -315,6 +337,8 @@ This standard is now the default expectation for all new list-style features unl
   - Expenses CRUD and ledger sync
   - Reimbursements ledger-backed CRUD and recurring-income visibility
   - Obligations CRUD and renewal workflow
+  - Mileage logs CRUD/defaulting behavior
+  - Mileage quick action preset posting
   - Attachment access and upload flows
   - History page filtering and merged event output
   - Recurring skip and preview controls

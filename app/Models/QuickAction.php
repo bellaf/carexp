@@ -24,6 +24,7 @@ class QuickAction extends Model
         'fuel_volume',
         'fuel_full_tank',
         'mileage_locations',
+        'mileage_distance',
         'vendor',
         'notes',
         'tags',
@@ -40,6 +41,7 @@ class QuickAction extends Model
             'amount' => 'decimal:2',
             'fuel_volume' => 'decimal:3',
             'fuel_full_tank' => 'boolean',
+            'mileage_distance' => 'integer',
             'tags' => 'array',
             'is_active' => 'boolean',
         ];

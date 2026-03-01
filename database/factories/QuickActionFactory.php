@@ -28,6 +28,7 @@ class QuickActionFactory extends Factory
             'fuel_volume' => null,
             'fuel_full_tank' => true,
             'mileage_locations' => null,
+            'mileage_distance' => null,
             'vendor' => $this->faker->company(),
             'notes' => $this->faker->sentence(),
             'tags' => [$this->faker->word()],

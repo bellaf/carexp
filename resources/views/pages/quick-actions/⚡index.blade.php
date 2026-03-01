@@ -47,6 +47,7 @@ new class extends Component {
             'fuel_volume' => $quickAction->fuel_volume !== null ? (string) $quickAction->fuel_volume : '',
             'fuel_full_tank' => (bool) $quickAction->fuel_full_tank,
             'mileage_locations' => $quickAction->mileage_locations ?? '',
+            'mileage_distance' => $quickAction->mileage_distance !== null ? (string) $quickAction->mileage_distance : '',
             'vendor' => $quickAction->vendor ?? '',
             'notes' => $quickAction->notes ?? '',
             'tags' => implode(', ', $quickAction->tags ?? []),
@@ -122,6 +123,7 @@ new class extends Component {
             'form.fuel_volume' => ['nullable', 'numeric', 'min:0.001'],
             'form.fuel_full_tank' => ['boolean'],
             'form.mileage_locations' => ['nullable', 'string', 'max:255'],
+            'form.mileage_distance' => [Rule::requiredIf((string) ($this->form['entry_target'] ?? '') === 'mileage_log'), 'nullable', 'integer', 'min:1', 'max:9999'],
             'form.vendor' => ['nullable', 'string', 'max:255'],
             'form.notes' => ['nullable', 'string'],
             'form.tags' => ['nullable', 'string', 'max:255'],
@@ -140,6 +142,7 @@ new class extends Component {
             'form.entry_target.required' => 'Target is required.',
             'form.amount.min' => 'Amount cannot be negative.',
             'form.fuel_volume.min' => 'Fuel volume must be greater than zero when provided.',
+            'form.mileage_distance.required' => 'Standard miles are required for mileage quick actions.',
         ];
     }
 
@@ -149,7 +152,7 @@ new class extends Component {
      */
     protected function normalizeAttributes(array $form): array
     {
-        foreach (['car_id', 'vendor', 'notes', 'mileage_locations'] as $field) {
+        foreach (['car_id', 'vendor', 'notes', 'mileage_locations', 'mileage_distance'] as $field) {
             if ($form[$field] === '') {
                 $form[$field] = null;
             }
@@ -170,6 +173,7 @@ new class extends Component {
             'fuel_volume' => $form['fuel_volume'] !== '' && $form['fuel_volume'] !== null ? (float) $form['fuel_volume'] : null,
             'fuel_full_tank' => (bool) $form['fuel_full_tank'],
             'mileage_locations' => $form['mileage_locations'],
+            'mileage_distance' => $form['mileage_distance'] !== null ? (int) $form['mileage_distance'] : null,
             'vendor' => $form['vendor'],
             'notes' => $form['notes'],
             'tags' => $tags !== [] ? $tags : null,
@@ -188,6 +192,7 @@ new class extends Component {
             'fuel_volume' => '',
             'fuel_full_tank' => true,
             'mileage_locations' => '',
+            'mileage_distance' => '',
             'vendor' => '',
             'notes' => '',
             'tags' => '',
@@ -265,6 +270,9 @@ new class extends Component {
                     <div x-data x-show="$wire.form.entry_target === 'fuel_log'" class="self-end" x-cloak>
                         <flux:checkbox wire:model="form.fuel_full_tank" :label="__('Full Tank')" />
                     </div>
+                    <div x-data x-show="$wire.form.entry_target === 'mileage_log'" x-cloak>
+                        <flux:input wire:model="form.mileage_distance" :label="__('Standard Miles')" type="number" min="1" step="1" />
+                    </div>
                     <div x-data class="md:col-span-2" x-show="$wire.form.entry_target === 'mileage_log'" x-cloak>
                         <flux:input wire:model="form.mileage_locations" :label="__('Standard Locations (comma separated)')" type="text" />
                     </div>
@@ -323,7 +331,7 @@ new class extends Component {
                             } }}</div>
                         </div>
                         <div class="text-right text-sm">
-                            <div class="font-semibold">{{ $quickAction->entry_target === 'mileage_log' ? __('Odometer Prompt') : $this->formatCurrency($quickAction->amount) }}</div>
+                            <div class="font-semibold">{{ $quickAction->entry_target === 'mileage_log' ? number_format((int) ($quickAction->mileage_distance ?? 0)).' '.__('miles') : $this->formatCurrency($quickAction->amount) }}</div>
                             <div class="text-zinc-500 dark:text-zinc-400">{{ $quickAction->is_active ? __('Active') : __('Hidden') }}</div>
                         </div>
                     </div>
@@ -365,7 +373,7 @@ new class extends Component {
                                 default => __('Expense'),
                             } }}</td>
                             <td class="px-3 py-2">{{ $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default') }}</td>
-                            <td class="px-3 py-2 text-right">{{ $quickAction->entry_target === 'mileage_log' ? __('Prompted') : $this->formatCurrency($quickAction->amount) }}</td>
+                            <td class="px-3 py-2 text-right">{{ $quickAction->entry_target === 'mileage_log' ? number_format((int) ($quickAction->mileage_distance ?? 0)).' '.__('miles') : $this->formatCurrency($quickAction->amount) }}</td>
                             <td class="px-3 py-2">{{ $quickAction->is_active ? __('Active') : __('Hidden') }}</td>
                             <td class="px-3 py-2">{{ $quickAction->sort_order }}</td>
                         </tr>
