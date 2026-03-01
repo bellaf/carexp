@@ -2,7 +2,7 @@
 
 use App\Models\Account;
 use App\Models\Car;
-use App\Models\Reimbursement;
+use App\Models\LedgerEntry;
 use App\Models\User;
 use Livewire\Livewire;
 
@@ -22,7 +22,7 @@ test('authenticated users can view reimbursements page', function () {
         ->assertSee('Tap any reimbursement to edit it.');
 });
 
-test('user can create reimbursement and assign reimbursement type', function () {
+test('user can create reimbursement as a ledger income entry', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
 
@@ -49,59 +49,78 @@ test('user can create reimbursement and assign reimbursement type', function () 
         ->call('saveReimbursement')
         ->assertHasNoErrors();
 
-    $this->assertDatabaseHas('reimbursements', [
-        'user_id' => $user->id,
-        'car_id' => $car->id,
-        'notes' => 'Monthly allowance',
-    ]);
-
-    $reimbursement = Reimbursement::query()
+    $ledgerEntry = LedgerEntry::query()
         ->where('user_id', $user->id)
         ->where('car_id', $car->id)
+        ->where('account_id', $allowanceAccount->id)
+        ->where('entry_type', 'income')
+        ->where('amount', '75.00')
         ->where('notes', 'Monthly allowance')
         ->firstOrFail();
 
-    expect($reimbursement->ledger_entry_id)->not->toBeNull();
-    $this->assertDatabaseHas('ledger_entries', [
-        'id' => $reimbursement->ledger_entry_id,
-        'user_id' => $user->id,
-        'account_id' => $allowanceAccount->id,
-        'amount' => '75.00',
-        'entry_type' => 'income',
-        'source_type' => 'reimbursement',
-        'source_id' => $reimbursement->id,
-    ]);
+    expect($ledgerEntry->source_type)->toBe('reimbursement')
+        ->and($ledgerEntry->source_id)->toBeNull();
+
 });
 
-test('user can update and delete reimbursement', function () {
+test('user can update and delete reimbursement ledger entries', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
 
-    $reimbursement = Reimbursement::factory()->for($car)->create([
+    $incomeAccount = Account::query()->firstOrCreate(
+        ['key' => 'company_car_allowance_income'],
+        ['user_id' => null, 'name' => 'Company Car Allowance', 'group' => 'income', 'is_system' => true, 'is_active' => true],
+    );
+
+    $ledgerEntry = LedgerEntry::factory()->for($car)->create([
         'user_id' => $user->id,
-        'ledger_entry_id' => $user->ledgerEntries()->create([
-            'car_id' => $car->id,
-            'account_id' => Account::query()->firstOrCreate(
-                ['key' => 'company_car_allowance_income'],
-                ['user_id' => null, 'name' => 'Company Car Allowance', 'group' => 'income', 'is_system' => true, 'is_active' => true],
-            )->id,
-            'entry_date' => now()->format('Y-m-d'),
-            'entry_type' => 'income',
-            'amount' => 50,
-            'source_type' => 'reimbursement',
-            'source_id' => 1,
-        ])->id,
+        'account_id' => $incomeAccount->id,
+        'entry_date' => now()->format('Y-m-d'),
+        'entry_type' => 'income',
+        'amount' => 50,
+        'source_type' => 'reimbursement',
+        'source_id' => null,
+        'notes' => 'Allowance',
     ]);
 
     $this->actingAs($user);
 
     Livewire::test('pages::reimbursements.index')
-        ->call('editReimbursement', $reimbursement->id)
+        ->call('editReimbursement', $ledgerEntry->id)
         ->set('form.amount', '120.00')
+        ->set('form.notes', 'Updated allowance')
         ->call('saveReimbursement')
         ->assertHasNoErrors()
-        ->call('deleteReimbursement', $reimbursement->id)
+        ->call('deleteReimbursement', $ledgerEntry->id)
         ->assertHasNoErrors();
 
-    $this->assertDatabaseMissing('reimbursements', ['id' => $reimbursement->id]);
+    $this->assertDatabaseMissing('ledger_entries', ['id' => $ledgerEntry->id]);
+});
+
+test('recurring income ledger entries appear in reimbursements view', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    $incomeAccount = Account::query()->firstOrCreate(
+        ['key' => 'company_business_fuel_tolls_income'],
+        ['user_id' => null, 'name' => 'Company Business Fuel & Tolls Reimbursement', 'group' => 'income', 'is_system' => true, 'is_active' => true],
+    );
+
+    LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $incomeAccount->id,
+        'entry_date' => '2025-12-01',
+        'entry_type' => 'income',
+        'amount' => 45,
+        'source_type' => 'recurring',
+        'source_id' => 99,
+        'notes' => 'Recurring repayment',
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::reimbursements.index')
+        ->set('filterPeriod', 'all_time')
+        ->assertSee('Company Business Fuel & Tolls Reimbursement')
+        ->assertSee('Recurring repayment');
 });

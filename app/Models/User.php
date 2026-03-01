@@ -84,11 +84,6 @@ class User extends Authenticatable
         return $this->hasMany(MaintenanceRecord::class);
     }
 
-    public function reimbursements(): HasMany
-    {
-        return $this->hasMany(Reimbursement::class);
-    }
-
     public function accounts(): HasMany
     {
         return $this->hasMany(Account::class);

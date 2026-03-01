@@ -2,7 +2,6 @@
 
 use App\Models\Account;
 use App\Models\LedgerEntry;
-use App\Models\Reimbursement;
 use App\Support\CurrencyFormatter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +13,7 @@ use Livewire\Component;
 new class extends Component {
     public bool $showForm = false;
     public bool $confirmingDelete = false;
-    public ?int $editingReimbursementId = null;
+    public ?int $editingLedgerEntryId = null;
 
     /**
      * @var array<string, mixed>
@@ -32,7 +31,7 @@ new class extends Component {
 
     public function startCreating(): void
     {
-        $this->editingReimbursementId = null;
+        $this->editingLedgerEntryId = null;
         $this->resetForm();
 
         if ($this->cars->isNotEmpty()) {
@@ -43,17 +42,20 @@ new class extends Component {
         $this->showForm = true;
     }
 
-    public function editReimbursement(int $reimbursementId): void
+    public function editReimbursement(int $ledgerEntryId): void
     {
-        $reimbursement = Auth::user()->reimbursements()->with('ledgerEntry')->findOrFail($reimbursementId);
+        $ledgerEntry = Auth::user()->ledgerEntries()
+            ->with(['account', 'car'])
+            ->where('entry_type', 'income')
+            ->findOrFail($ledgerEntryId);
 
-        $this->editingReimbursementId = $reimbursement->id;
+        $this->editingLedgerEntryId = $ledgerEntry->id;
         $this->form = [
-            'car_id' => (string) $reimbursement->car_id,
-            'account_id' => (string) ($reimbursement->ledgerEntry?->account_id ?? $this->defaultIncomeAccount()->id),
-            'reimbursed_date' => $reimbursement->reimbursed_date->format('Y-m-d'),
-            'amount' => $reimbursement->ledgerEntry !== null ? (string) $reimbursement->ledgerEntry->amount : '',
-            'notes' => $reimbursement->notes ?? '',
+            'car_id' => (string) $ledgerEntry->car_id,
+            'account_id' => (string) $ledgerEntry->account_id,
+            'reimbursed_date' => $ledgerEntry->entry_date->format('Y-m-d'),
+            'amount' => (string) $ledgerEntry->amount,
+            'notes' => $ledgerEntry->notes ?? '',
         ];
 
         $this->showForm = true;
@@ -69,30 +71,25 @@ new class extends Component {
         $amount = $normalized['amount'];
 
         DB::transaction(function () use ($attributes, $accountId, $amount): void {
-            if ($this->editingReimbursementId !== null) {
-                $reimbursement = Auth::user()->reimbursements()->findOrFail($this->editingReimbursementId);
-                $reimbursement->update($attributes);
-            } else {
-                $reimbursement = Auth::user()->reimbursements()->create($attributes);
-            }
+            $ledgerEntry = $this->editingLedgerEntryId !== null
+                ? Auth::user()->ledgerEntries()->findOrFail($this->editingLedgerEntryId)
+                : new LedgerEntry();
 
-            $this->syncLedgerEntry($reimbursement, $accountId, $amount);
+            $this->syncLedgerEntry($ledgerEntry, $attributes, $accountId, $amount);
         });
 
         $this->cancelForm();
         $this->dispatch('reimbursement-saved');
     }
 
-    public function deleteReimbursement(int $reimbursementId): void
+    public function deleteReimbursement(int $ledgerEntryId): void
     {
-        DB::transaction(function () use ($reimbursementId): void {
-            $reimbursement = Auth::user()->reimbursements()->findOrFail($reimbursementId);
+        DB::transaction(function () use ($ledgerEntryId): void {
+            $ledgerEntry = Auth::user()->ledgerEntries()
+                ->where('entry_type', 'income')
+                ->findOrFail($ledgerEntryId);
 
-            if ($reimbursement->ledger_entry_id !== null) {
-                Auth::user()->ledgerEntries()->whereKey($reimbursement->ledger_entry_id)->delete();
-            }
-
-            $reimbursement->delete();
+            $ledgerEntry->delete();
         });
     }
 
@@ -105,14 +102,14 @@ new class extends Component {
     public function cancelForm(): void
     {
         $this->showForm = false;
-        $this->editingReimbursementId = null;
+        $this->editingLedgerEntryId = null;
         $this->confirmingDelete = false;
         $this->resetForm();
     }
 
     public function confirmDeleteEditing(): void
     {
-        if ($this->editingReimbursementId === null) {
+        if ($this->editingLedgerEntryId === null) {
             return;
         }
 
@@ -126,11 +123,11 @@ new class extends Component {
 
     public function deleteEditingReimbursement(): void
     {
-        if ($this->editingReimbursementId === null) {
+        if ($this->editingLedgerEntryId === null) {
             return;
         }
 
-        $this->deleteReimbursement($this->editingReimbursementId);
+        $this->deleteReimbursement($this->editingLedgerEntryId);
         $this->cancelForm();
     }
 
@@ -176,12 +173,14 @@ new class extends Component {
             default => null,
         };
 
-        return Auth::user()->reimbursements()
-            ->with(['car', 'ledgerEntry.account'])
-            ->when($this->filterAccountId, fn ($query) => $query->whereHas('ledgerEntry', fn ($ledgerQuery) => $ledgerQuery->where('account_id', (int) $this->filterAccountId)))
-            ->when($periodStartDate !== null, fn ($query) => $query->whereDate('reimbursed_date', '>=', $periodStartDate))
-            ->when($periodEndDate !== null, fn ($query) => $query->whereDate('reimbursed_date', '<=', $periodEndDate))
-            ->orderByDesc('reimbursed_date')
+        return Auth::user()->ledgerEntries()
+            ->with(['car', 'account'])
+            ->where('entry_type', 'income')
+            ->when($this->filterAccountId, fn ($query) => $query->where('account_id', (int) $this->filterAccountId))
+            ->when($periodStartDate !== null, fn ($query) => $query->whereDate('entry_date', '>=', $periodStartDate))
+            ->when($periodEndDate !== null, fn ($query) => $query->whereDate('entry_date', '<=', $periodEndDate))
+            ->whereHas('account', fn ($query) => $query->where('group', 'income'))
+            ->orderByDesc('entry_date')
             ->orderByDesc('id')
             ->get();
     }
@@ -190,7 +189,7 @@ new class extends Component {
     public function filteredTotal(): float
     {
         return (float) $this->reimbursements
-            ->map(fn (Reimbursement $reimbursement): float => (float) ($reimbursement->ledgerEntry?->amount ?? 0))
+            ->map(fn (LedgerEntry $ledgerEntry): float => (float) $ledgerEntry->amount)
             ->sum();
     }
 
@@ -281,31 +280,29 @@ new class extends Component {
         );
     }
 
-    protected function syncLedgerEntry(Reimbursement $reimbursement, int $accountId, float $amount): void
+    /**
+     * @param array{car_id:int,reimbursed_date:string,source:null,reference:null,notes:?string} $attributes
+     */
+    protected function syncLedgerEntry(LedgerEntry $ledgerEntry, array $attributes, int $accountId, float $amount): void
     {
-        $entryAttributes = [
+        $sourceType = $ledgerEntry->exists && $ledgerEntry->source_type !== null
+            ? $ledgerEntry->source_type
+            : 'reimbursement';
+
+        $ledgerEntry->fill([
             'user_id' => Auth::id(),
-            'car_id' => $reimbursement->car_id,
+            'car_id' => $attributes['car_id'],
             'account_id' => $accountId,
-            'entry_date' => $reimbursement->reimbursed_date->format('Y-m-d'),
+            'entry_date' => $attributes['reimbursed_date'],
             'entry_type' => 'income',
             'amount' => $amount,
-            'source_type' => 'reimbursement',
-            'source_id' => $reimbursement->id,
+            'source_type' => $sourceType,
+            'source_id' => $sourceType === 'reimbursement' ? null : $ledgerEntry->source_id,
             'reference' => null,
-            'notes' => $reimbursement->notes,
-        ];
+            'notes' => $attributes['notes'],
+        ]);
 
-        $entry = $reimbursement->ledger_entry_id !== null
-            ? Auth::user()->ledgerEntries()->findOrFail($reimbursement->ledger_entry_id)
-            : new LedgerEntry();
-
-        $entry->fill($entryAttributes);
-        $entry->save();
-
-        if ($reimbursement->ledger_entry_id !== $entry->id) {
-            $reimbursement->update(['ledger_entry_id' => $entry->id]);
-        }
+        $ledgerEntry->save();
     }
 
     protected function resetForm(): void
@@ -342,7 +339,7 @@ new class extends Component {
         <div class="space-y-5">
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <flux:heading>{{ $editingReimbursementId ? __('Edit Reimbursement') : __('Add Reimbursement') }}</flux:heading>
+                    <flux:heading>{{ $editingLedgerEntryId ? __('Edit Reimbursement') : __('Add Reimbursement') }}</flux:heading>
                     <flux:subheading>{{ __('Choose reimbursement type, date, and amount.') }}</flux:subheading>
                 </div>
                 <flux:button type="button" variant="ghost" wire:click="cancelForm">{{ __('Close') }}</flux:button>
@@ -381,9 +378,9 @@ new class extends Component {
                     </div>
 
                     <div class="flex items-center gap-2">
-                        @if ($editingReimbursementId !== null && ! $confirmingDelete)
+                        @if ($editingLedgerEntryId !== null && ! $confirmingDelete)
                             <flux:button type="button" variant="danger" wire:click="confirmDeleteEditing">{{ __('Delete') }}</flux:button>
-                        @elseif ($editingReimbursementId !== null && $confirmingDelete)
+                        @elseif ($editingLedgerEntryId !== null && $confirmingDelete)
                             <flux:text class="text-red-600 dark:text-red-400">{{ __('Confirm delete this reimbursement?') }}</flux:text>
                             <flux:button type="button" variant="danger" wire:click="deleteEditingReimbursement">{{ __('Confirm Delete') }}</flux:button>
                             <flux:button type="button" variant="ghost" wire:click="cancelDeleteEditing">{{ __('Cancel') }}</flux:button>
@@ -457,10 +454,10 @@ new class extends Component {
                 >
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <div class="font-medium">{{ $reimbursement->ledgerEntry?->account?->name ?? __('N/A') }}</div>
-                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $reimbursement->reimbursed_date->format('d-m-Y') }}</div>
+                            <div class="font-medium">{{ $reimbursement->account?->name ?? __('N/A') }}</div>
+                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ $reimbursement->entry_date->format('d-m-Y') }}</div>
                         </div>
-                        <div class="text-right font-semibold text-emerald-700 dark:text-emerald-400">{{ $this->formatCurrency($reimbursement->ledgerEntry?->amount) }}</div>
+                        <div class="text-right font-semibold text-emerald-700 dark:text-emerald-400">{{ $this->formatCurrency($reimbursement->amount) }}</div>
                     </div>
                     <dl class="mt-3 grid gap-2 text-sm">
                         <div>
@@ -489,12 +486,12 @@ new class extends Component {
                             wire:click="editReimbursement({{ $reimbursement->id }})"
                             wire:key="reimbursement-row-{{ $reimbursement->id }}"
                         >
-                            <td class="px-3 py-2">{{ $reimbursement->reimbursed_date->format('d-m-Y') }}</td>
-                            <td class="px-3 py-2">{{ $reimbursement->ledgerEntry?->account?->name ?? __('N/A') }}</td>
+                            <td class="px-3 py-2">{{ $reimbursement->entry_date->format('d-m-Y') }}</td>
+                            <td class="px-3 py-2">{{ $reimbursement->account?->name ?? __('N/A') }}</td>
                             <td class="px-3 py-2">
                                 <div class="max-w-72 truncate">{{ $reimbursement->notes ?: __('N/A') }}</div>
                             </td>
-                            <td class="px-3 py-2 text-right">{{ $this->formatCurrency($reimbursement->ledgerEntry?->amount) }}</td>
+                            <td class="px-3 py-2 text-right">{{ $this->formatCurrency($reimbursement->amount) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

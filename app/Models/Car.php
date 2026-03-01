@@ -71,11 +71,6 @@ class Car extends Model
         return $this->hasMany(MaintenanceRecord::class);
     }
 
-    public function reimbursements(): HasMany
-    {
-        return $this->hasMany(Reimbursement::class);
-    }
-
     public function ledgerEntries(): HasMany
     {
         return $this->hasMany(LedgerEntry::class);

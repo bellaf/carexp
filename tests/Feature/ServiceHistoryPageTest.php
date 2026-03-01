@@ -5,8 +5,8 @@ use App\Models\Car;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\FuelLog;
+use App\Models\LedgerEntry;
 use App\Models\MaintenanceRecord;
-use App\Models\Reimbursement;
 use App\Models\User;
 use App\Models\VehicleObligation;
 
@@ -80,20 +80,16 @@ test('authenticated users can view merged vehicle history', function () {
         'amount' => 420,
     ]);
 
-    Reimbursement::factory()->for($car)->create([
+    LedgerEntry::factory()->for($car)->create([
         'user_id' => $user->id,
-        'source' => 'Employer',
+        'account_id' => $incomeAccount->id,
+        'entry_date' => '2026-02-15',
+        'entry_type' => 'income',
+        'amount' => 75,
+        'source_type' => 'reimbursement',
+        'source_id' => null,
         'reference' => 'FEB-2026',
-        'reimbursed_date' => '2026-02-15',
-        'ledger_entry_id' => $user->ledgerEntries()->create([
-            'car_id' => $car->id,
-            'account_id' => $incomeAccount->id,
-            'entry_date' => '2026-02-15',
-            'entry_type' => 'income',
-            'amount' => 75,
-            'source_type' => 'reimbursement',
-            'source_id' => 1,
-        ])->id,
+        'notes' => 'Employer repayment',
     ]);
 
     $this->actingAs($user)
@@ -104,7 +100,8 @@ test('authenticated users can view merged vehicle history', function () {
         ->assertSee('Parking')
         ->assertSee('Oil Change')
         ->assertSee('Insurance')
-        ->assertSee('Employer');
+        ->assertSee('Allowance')
+        ->assertSee('FEB-2026');
 });
 
 test('history can be filtered by event type and car', function () {

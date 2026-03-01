@@ -5,7 +5,7 @@ CarExp - Personal Car Expense + Reimbursement Ledger
 
 ## Document Status
 - Version: Current implementation baseline
-- Date: 28-02-2026
+- Date: 01-03-2026
 - Purpose: Describe what the app does now, based on the shipped codebase.
 
 ## Product Summary
@@ -23,7 +23,7 @@ Primary outcomes:
 ## Core Principles
 1. Ledger-centric finance model
 - Financial reporting is based on `ledger_entries`.
-- Source modules (fuel, maintenance, expenses, reimbursements, recurring schedules) create/update linked ledger rows.
+- Source modules (fuel, maintenance, expenses, obligations on completion, recurring schedules, and manual reimbursements) write financial activity into `ledger_entries`.
 
 2. Operational source records retained
 - Source tables still store operational context (odometer, service type, tags, etc.).
@@ -93,9 +93,12 @@ Primary outcomes:
 
 ### 6. Reimbursements
 - Records: reimbursed date, amount, account/type, notes
-- Ledger sync:
-  - Creates/updates linked income ledger entry (`source_type=reimbursement`)
-  - Deletes linked ledger entry when reimbursement is deleted
+- Storage model:
+  - Reimbursements are ledger-native income entries, not a separate source table
+  - Manual reimbursement entry creates/updates a `ledger_entries` income row (`source_type=reimbursement`)
+  - Recurring income entries also appear in the Reimbursements view because that page is now ledger-backed
+- Delete behavior:
+  - Deleting a reimbursement removes the ledger entry
 - Default income accounts are auto-ensured
 
 ### 7. Recurring schedules (dedicated page)
@@ -193,7 +196,7 @@ Primary outcomes:
   - manual expenses
   - maintenance records
   - obligations
-  - reimbursements
+  - reimbursement/income ledger entries
 - Filters:
   - car
   - event type
@@ -261,7 +264,6 @@ This standard is now the default expectation for all new list-style features unl
 - `fuel_logs` (linked by unique nullable `ledger_entry_id`)
 - `maintenance_records` (linked by unique nullable `ledger_entry_id`)
 - `expenses` (linked by unique nullable `ledger_entry_id`)
-- `reimbursements` (linked by unique nullable `ledger_entry_id`)
 - `vehicle_obligations` (linked by unique nullable `ledger_entry_id`)
 - `recurring_transactions`
 - `attachments` (polymorphic, user-owned, private file serving)
@@ -312,7 +314,7 @@ This standard is now the default expectation for all new list-style features unl
   - Dashboard behavior and reminders
   - Fuel CRUD and odometer sync
   - Expenses CRUD and ledger sync
-  - Reimbursements CRUD and ledger sync
+  - Reimbursements ledger-backed CRUD and recurring-income visibility
   - Obligations CRUD and renewal workflow
   - Attachment access and upload flows
   - History page filtering and merged event output
@@ -331,6 +333,10 @@ This standard is now the default expectation for all new list-style features unl
 3. Dashboard forecast currently projects from recurring schedules only; no scenario modeling beyond that.
 4. Reports are currently on-screen only; export/print/PDF is not yet implemented.
 5. Reporting remains intentionally simple; no charting or advanced analytics yet.
+
+## Schema Notes
+- The legacy `reimbursements` table has been removed.
+- Reimbursement financial activity is now represented directly in `ledger_entries`.
 
 ## Operational Notes
 - Recurring generation in production should be executed via scheduler/cron (`app:generate-recurring-transactions`).

@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Expense;
 use App\Models\FuelLog;
+use App\Models\LedgerEntry;
 use App\Models\MaintenanceRecord;
-use App\Models\Reimbursement;
 use App\Models\User;
 use App\Models\VehicleObligation;
 use App\Support\CurrencyFormatter;
@@ -206,27 +206,29 @@ class ServiceHistoryController extends Controller
 
     private function reimbursementEvents(User $user, ?int $carId): Collection
     {
-        return $user->reimbursements()
-            ->with(['car', 'ledgerEntry'])
+        return $user->ledgerEntries()
+            ->with(['car', 'account'])
+            ->where('entry_type', 'income')
+            ->whereHas('account', fn ($query) => $query->where('group', 'income'))
             ->when($carId !== null, fn ($query) => $query->where('car_id', $carId))
-            ->orderByDesc('reimbursed_date')
+            ->orderByDesc('entry_date')
             ->orderByDesc('id')
             ->get()
-            ->map(fn (Reimbursement $reimbursement): array => [
-                'id' => 'reimbursement-'.$reimbursement->id,
+            ->map(fn (LedgerEntry $ledgerEntry): array => [
+                'id' => 'reimbursement-'.$ledgerEntry->id,
                 'type' => 'Reimbursement',
-                'date' => $reimbursement->reimbursed_date->format('d-m-Y'),
-                'sort_key' => $reimbursement->reimbursed_date->format('Y-m-d').'|'.str_pad((string) $reimbursement->id, 10, '0', STR_PAD_LEFT),
-                'car' => $this->carLabel($reimbursement->car?->year, $reimbursement->car?->make, $reimbursement->car?->model),
-                'title' => $reimbursement->source ?: 'Reimbursement',
-                'subtitle' => $reimbursement->reference ?: 'Incoming reimbursement',
-                'amount' => CurrencyFormatter::format($reimbursement->ledgerEntry?->amount, $user->preferred_currency),
-                'amount_value' => (float) ($reimbursement->ledgerEntry?->amount ?? 0),
+                'date' => $ledgerEntry->entry_date->format('d-m-Y'),
+                'sort_key' => $ledgerEntry->entry_date->format('Y-m-d').'|'.str_pad((string) $ledgerEntry->id, 10, '0', STR_PAD_LEFT),
+                'car' => $this->carLabel($ledgerEntry->car?->year, $ledgerEntry->car?->make, $ledgerEntry->car?->model),
+                'title' => $ledgerEntry->account?->name ?? 'Reimbursement',
+                'subtitle' => $ledgerEntry->reference ?: ($ledgerEntry->source_type === 'recurring' ? 'Recurring reimbursement' : 'Incoming reimbursement'),
+                'amount' => CurrencyFormatter::format($ledgerEntry->amount, $user->preferred_currency),
+                'amount_value' => (float) $ledgerEntry->amount,
                 'amount_type' => 'income',
                 'details' => array_filter([
-                    'Source' => $reimbursement->source,
-                    'Reference' => $reimbursement->reference,
-                    'Notes' => $reimbursement->notes,
+                    'Source Type' => str($ledgerEntry->source_type ?? 'reimbursement')->replace('_', ' ')->title()->toString(),
+                    'Reference' => $ledgerEntry->reference,
+                    'Notes' => $ledgerEntry->notes,
                 ], fn (mixed $value): bool => $value !== null && $value !== ''),
                 'attachments' => [],
                 'has_attachments' => false,

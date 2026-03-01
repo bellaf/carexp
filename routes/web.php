@@ -10,7 +10,6 @@ use App\Models\LedgerEntry;
 use App\Models\MaintenanceRecord;
 use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
-use App\Models\Reimbursement;
 use App\Models\VehicleObligation;
 use App\Support\OwnershipCostMetrics;
 use App\Support\VehicleObligationStatus;
@@ -483,10 +482,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     ->whereKey($ledgerEntry->source_id)
                     ->delete(),
                 'maintenance_record' => MaintenanceRecord::query()
-                    ->where('user_id', $request->user()->id)
-                    ->whereKey($ledgerEntry->source_id)
-                    ->delete(),
-                'reimbursement' => Reimbursement::query()
                     ->where('user_id', $request->user()->id)
                     ->whereKey($ledgerEntry->source_id)
                     ->delete(),
