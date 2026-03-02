@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Account;
 use App\Models\ExpenseCategory;
 use App\Models\FuelLog;
 use App\Models\QuickAction;
@@ -19,12 +20,17 @@ test('authenticated users can create quick actions', function () {
         'year' => 2018,
         'is_default' => true,
     ]);
+    $category = ExpenseCategory::factory()->create([
+        'key' => 'tolls',
+        'name' => 'Tolls',
+    ]);
 
     $this->actingAs($user);
 
     Livewire::test('pages::quick-actions.index')
         ->call('startCreating')
         ->set('form.name', 'Dartford Toll Return')
+        ->set('form.expense_category_id', (string) $category->id)
         ->set('form.car_id', (string) $car->id)
         ->set('form.amount', '5.00')
         ->set('form.vendor', 'Dartford Crossing')
@@ -38,6 +44,7 @@ test('authenticated users can create quick actions', function () {
     $this->assertDatabaseHas('quick_actions', [
         'user_id' => $user->id,
         'name' => 'Dartford Toll Return',
+        'expense_category_id' => $category->id,
         'car_id' => $car->id,
         'amount' => '5.00',
         'is_active' => 1,
@@ -140,13 +147,19 @@ test('dashboard quick action button posts expense and ledger entry', function ()
     $this->assertDatabaseHas('expenses', [
         'user_id' => $user->id,
         'car_id' => $car->id,
+        'expense_category_id' => $category->id,
         'amount' => '2.50',
         'vendor' => 'Dartford Crossing',
     ]);
 
+    $tollsAccount = Account::query()->where('key', 'tolls_expense')->first();
+
+    expect($tollsAccount)->not->toBeNull();
+
     $this->assertDatabaseHas('ledger_entries', [
         'user_id' => $user->id,
         'car_id' => $car->id,
+        'account_id' => $tollsAccount->id,
         'entry_type' => 'expense',
         'amount' => '2.50',
         'source_type' => 'expense',
@@ -183,13 +196,19 @@ test('dashboard quick action with zero amount accepts posted amount override', f
     $this->assertDatabaseHas('expenses', [
         'user_id' => $user->id,
         'car_id' => $car->id,
+        'expense_category_id' => $category->id,
         'amount' => '6.40',
         'vendor' => 'Town Car Park',
     ]);
 
+    $parkingAccount = Account::query()->where('key', 'parking_expense')->first();
+
+    expect($parkingAccount)->not->toBeNull();
+
     $this->assertDatabaseHas('ledger_entries', [
         'user_id' => $user->id,
         'car_id' => $car->id,
+        'account_id' => $parkingAccount->id,
         'entry_type' => 'expense',
         'amount' => '6.40',
         'source_type' => 'expense',

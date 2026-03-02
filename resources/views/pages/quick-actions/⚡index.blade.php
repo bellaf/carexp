@@ -42,6 +42,7 @@ new class extends Component {
         $this->form = [
             'name' => $quickAction->name,
             'entry_target' => $quickAction->entry_target,
+            'expense_category_id' => (string) $quickAction->expense_category_id,
             'car_id' => $quickAction->car_id !== null ? (string) $quickAction->car_id : '',
             'amount' => (string) $quickAction->amount,
             'fuel_volume' => $quickAction->fuel_volume !== null ? (string) $quickAction->fuel_volume : '',
@@ -104,10 +105,16 @@ new class extends Component {
     public function quickActions(): Collection
     {
         return Auth::user()->quickActions()
-            ->with(['car'])
+            ->with(['car', 'expenseCategory'])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
+    }
+
+    #[Computed]
+    public function categories(): Collection
+    {
+        return ExpenseCategory::query()->orderBy('name')->get();
     }
 
     /**
@@ -118,6 +125,12 @@ new class extends Component {
         return [
             'form.name' => ['required', 'string', 'max:255'],
             'form.entry_target' => ['required', Rule::in(['expense', 'fuel_log', 'mileage_log'])],
+            'form.expense_category_id' => [
+                Rule::requiredIf((string) ($this->form['entry_target'] ?? '') === 'expense'),
+                'nullable',
+                'integer',
+                Rule::exists('expense_categories', 'id'),
+            ],
             'form.car_id' => ['nullable', 'integer', Rule::exists('cars', 'id')->where(fn ($query) => $query->where('user_id', Auth::id()))],
             'form.amount' => ['nullable', 'numeric', 'min:0'],
             'form.fuel_volume' => ['nullable', 'numeric', 'min:0.001'],
@@ -140,6 +153,7 @@ new class extends Component {
         return [
             'form.name.required' => 'Action name is required.',
             'form.entry_target.required' => 'Target is required.',
+            'form.expense_category_id.required' => 'Expense category is required for expense quick actions.',
             'form.amount.min' => 'Amount cannot be negative.',
             'form.fuel_volume.min' => 'Fuel volume must be greater than zero when provided.',
             'form.mileage_distance.required' => 'Standard miles are required for mileage quick actions.',
@@ -167,7 +181,7 @@ new class extends Component {
         return [
             'name' => $form['name'],
             'entry_target' => $form['entry_target'],
-            'expense_category_id' => $this->resolveExpenseCategoryId((string) $form['entry_target']),
+            'expense_category_id' => $this->resolveExpenseCategoryId($form),
             'car_id' => $form['car_id'] !== null ? (int) $form['car_id'] : null,
             'amount' => (float) ($form['amount'] ?: 0),
             'fuel_volume' => $form['fuel_volume'] !== '' && $form['fuel_volume'] !== null ? (float) $form['fuel_volume'] : null,
@@ -187,6 +201,7 @@ new class extends Component {
         $this->form = [
             'name' => '',
             'entry_target' => 'expense',
+            'expense_category_id' => (string) $this->defaultExpenseCategoryId(),
             'car_id' => '',
             'amount' => '',
             'fuel_volume' => '',
@@ -201,19 +216,40 @@ new class extends Component {
         ];
     }
 
-    protected function resolveExpenseCategoryId(string $entryTarget): int
+    protected function resolveExpenseCategoryId(array $form): int
     {
+        $entryTarget = (string) $form['entry_target'];
+
+        if ($entryTarget === 'expense' && filled($form['expense_category_id'] ?? null)) {
+            return (int) $form['expense_category_id'];
+        }
+
         $category = $entryTarget === 'fuel_log'
-            ? ExpenseCategory::query()->firstOrCreate(
-                ['key' => 'fuel'],
-                ['name' => 'Fuel', 'is_system' => true],
-            )
-            : ExpenseCategory::query()->firstOrCreate(
-                ['key' => 'other'],
-                ['name' => 'Other', 'is_system' => true],
-            );
+            ? $this->fuelCategory()
+            : $this->otherCategory();
 
         return (int) $category->id;
+    }
+
+    protected function defaultExpenseCategoryId(): int
+    {
+        return (int) $this->otherCategory()->id;
+    }
+
+    protected function fuelCategory(): ExpenseCategory
+    {
+        return ExpenseCategory::query()->firstOrCreate(
+            ['key' => 'fuel'],
+            ['name' => 'Fuel', 'is_system' => true],
+        );
+    }
+
+    protected function otherCategory(): ExpenseCategory
+    {
+        return ExpenseCategory::query()->firstOrCreate(
+            ['key' => 'other'],
+            ['name' => 'Other', 'is_system' => true],
+        );
     }
 }; ?>
 
@@ -246,6 +282,14 @@ new class extends Component {
                         <flux:select.option value="fuel_log">{{ __('Fuel Log Entry') }}</flux:select.option>
                         <flux:select.option value="mileage_log">{{ __('Mileage Log Entry') }}</flux:select.option>
                     </flux:select>
+
+                    <div x-data x-show="$wire.form.entry_target === 'expense'" x-cloak>
+                        <flux:select wire:model="form.expense_category_id" :label="__('Expense Category')" required>
+                            @foreach ($this->categories as $category)
+                                <flux:select.option :value="$category->id">{{ $category->name }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    </div>
 
                     <flux:select wire:model="form.car_id" :label="__('Car (Optional)')">
                         <flux:select.option value="">{{ __('Use default car') }}</flux:select.option>

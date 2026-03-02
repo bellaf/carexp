@@ -12,6 +12,7 @@ use App\Models\MileageLog;
 use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
 use App\Models\VehicleObligation;
+use App\Support\ExpenseAccountResolver;
 use App\Support\OwnershipCostMetrics;
 use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
@@ -425,13 +426,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->withErrors(['quick_action_amount' => __('Please enter an amount for this quick action.')]);
         }
 
-        $accountKey = $quickAction->entry_target === 'fuel_log'
-            ? 'fuel_expense'
-            : 'other_expense';
-        $accountName = $quickAction->entry_target === 'fuel_log'
-            ? 'Fuel'
-            : 'Other Expense';
-
         if ($quickAction->entry_target === 'fuel_log') {
             $configuredFuelVolume = $quickAction->fuel_volume !== null ? (float) $quickAction->fuel_volume : null;
             $fuelVolumeToPost = $configuredFuelVolume !== null && $configuredFuelVolume > 0
@@ -496,7 +490,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $car->update(['current_odometer' => max((int) ($car->current_odometer ?? 0), $odometerToPost)]);
             });
         } else {
-            DB::transaction(function () use ($user, $car, $quickAction, $accountKey, $accountName, $amountToPost): void {
+            DB::transaction(function () use ($user, $car, $quickAction, $amountToPost): void {
                 $expense = Expense::query()->create([
                     'user_id' => $user->id,
                     'car_id' => $car->id,
@@ -510,16 +504,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'tags' => $quickAction->tags,
                 ]);
 
-                $account = Account::query()->firstOrCreate(
-                    ['key' => $accountKey],
-                    [
-                        'user_id' => null,
-                        'name' => $accountName,
-                        'group' => 'expense',
-                        'is_system' => true,
-                        'is_active' => true,
-                    ],
-                );
+                $account = app(ExpenseAccountResolver::class)->accountForCategory($quickAction->expenseCategory);
 
                 $ledgerEntry = $user->ledgerEntries()->create([
                     'car_id' => $car->id,

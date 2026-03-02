@@ -7,6 +7,7 @@ use App\Models\ExpenseCategory;
 use App\Models\LedgerEntry;
 use App\Support\AttachmentManager;
 use App\Support\CurrencyFormatter;
+use App\Support\ExpenseAccountResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -369,7 +370,7 @@ new class extends Component {
 
     protected function syncLedgerEntry(Expense $expense): void
     {
-        $account = $this->accountForExpenseCategory($expense->category);
+        $account = app(ExpenseAccountResolver::class)->accountForCategory($expense->category);
 
         $entryAttributes = [
             'user_id' => Auth::id(),
@@ -394,47 +395,6 @@ new class extends Component {
         if ($expense->ledger_entry_id !== $entry->id) {
             $expense->update(['ledger_entry_id' => $entry->id]);
         }
-    }
-
-    protected function accountForExpenseCategory(?ExpenseCategory $category): Account
-    {
-        $accountKey = match ($category?->key) {
-            'fuel' => 'fuel_expense',
-            'maintenance' => 'maintenance_expense',
-            'repairs' => 'repairs_expense',
-            'tires' => 'tires_expense',
-            'insurance' => 'insurance_expense',
-            'registration_dmv' => 'tax_registration_expense',
-            'parking' => 'parking_expense',
-            'tolls' => 'tolls_expense',
-            default => 'other_expense',
-        };
-
-        return Account::query()->firstOrCreate(
-            ['key' => $accountKey],
-            [
-                'user_id' => null,
-                'name' => $this->defaultAccountName($accountKey),
-                'group' => 'expense',
-                'is_system' => true,
-                'is_active' => true,
-            ],
-        );
-    }
-
-    protected function defaultAccountName(string $accountKey): string
-    {
-        return match ($accountKey) {
-            'fuel_expense' => 'Fuel',
-            'maintenance_expense' => 'Maintenance',
-            'repairs_expense' => 'Repairs',
-            'tires_expense' => 'Tires',
-            'insurance_expense' => 'Insurance',
-            'tax_registration_expense' => 'Tax/Registration',
-            'parking_expense' => 'Parking',
-            'tolls_expense' => 'Tolls',
-            default => 'Other Expense',
-        };
     }
 
     protected function resetForm(): void
