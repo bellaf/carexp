@@ -83,12 +83,23 @@ class ReportsController extends Controller
             'selectedCarId' => $selectedCarId,
             'summary' => $this->summaryMetrics($ledgerEntries, $user->preferred_currency),
             'categoryRows' => $this->categoryBreakdown($ledgerEntries, $user->preferred_currency),
-            'monthlyRows' => $this->monthlyLedgerTrend($ledgerEntries, $user->preferred_currency),
+            'monthlyRows' => $monthlyRows = $this->monthlyLedgerTrend($ledgerEntries, $user->preferred_currency),
             'fuelSummary' => $this->fuelSummary($fuelLogs, $user->preferred_currency, $user->measurement_system),
-            'fuelMonthlyRows' => $this->fuelMonthlyTrend($fuelLogs, $user->preferred_currency, $user->measurement_system),
+            'fuelMonthlyRows' => $fuelMonthlyRows = $this->fuelMonthlyTrend($fuelLogs, $user->preferred_currency, $user->measurement_system),
             'obligationSummary' => $this->obligationSummary($vehicleObligations, $user->preferred_currency),
             'obligationRows' => $this->obligationRows($vehicleObligations, $user->preferred_currency),
             'ownershipRows' => $this->ownershipRows($cars, $selectedCarId, $user->preferred_currency, $user->measurement_system),
+            'summarySparklines' => [
+                'expenses' => $this->buildSparkline($monthlyRows, 'expense_total_value'),
+                'reimbursements' => $this->buildSparkline($monthlyRows, 'income_total_value'),
+                'net_cost' => $this->buildSparkline($monthlyRows, 'net_cost_value'),
+            ],
+            'fuelSparklines' => [
+                'spend' => $this->buildSparkline($fuelMonthlyRows, 'total_spend_value'),
+                'fill_count' => $this->buildSparkline($fuelMonthlyRows, 'fill_count_value'),
+                'volume' => $this->buildSparkline($fuelMonthlyRows, 'total_volume_value'),
+                'efficiency' => $this->buildSparkline($fuelMonthlyRows, 'average_efficiency_value'),
+            ],
         ]);
     }
 
@@ -195,6 +206,9 @@ class ReportsController extends Controller
                     'expense_total' => CurrencyFormatter::format($expenseTotal, $currencyCode),
                     'income_total' => CurrencyFormatter::format($incomeTotal, $currencyCode),
                     'net_cost' => CurrencyFormatter::format($netCost, $currencyCode),
+                    'expense_total_value' => $expenseTotal,
+                    'income_total_value' => $incomeTotal,
+                    'net_cost_value' => $netCost,
                 ];
             })
             ->sortKeysDesc()
@@ -234,10 +248,56 @@ class ReportsController extends Controller
                     'total_spend' => CurrencyFormatter::format($totalSpend, $currencyCode),
                     'total_volume' => number_format($totalVolume, 3),
                     'average_efficiency' => $averageEfficiency !== null ? number_format((float) $averageEfficiency, 3) : 'N/A',
+                    'fill_count_value' => $entries->count(),
+                    'total_spend_value' => $totalSpend,
+                    'total_volume_value' => $totalVolume,
+                    'average_efficiency_value' => $averageEfficiency,
                 ];
             })
             ->sortKeysDesc()
             ->values();
+    }
+
+    /**
+     * @return array{points:string,start:float,end:float,direction:int}|null
+     */
+    private function buildSparkline(Collection $rows, string $key): ?array
+    {
+        $values = $rows
+            ->pluck($key)
+            ->filter(fn (mixed $value): bool => $value !== null)
+            ->map(fn (mixed $value): float => round((float) $value, 3))
+            ->values();
+
+        if ($values->isEmpty()) {
+            return null;
+        }
+
+        $min = $values->min();
+        $max = $values->max();
+        $count = $values->count();
+        $xStep = $count === 1 ? 0.0 : 100 / ($count - 1);
+
+        $points = $values
+            ->map(function (float $value, int $index) use ($min, $max, $xStep): string {
+                $x = round($index * $xStep, 2);
+                $y = $max === $min
+                    ? 18.0
+                    : round(36 - ((($value - $min) / ($max - $min)) * 32), 2);
+
+                return "{$x},{$y}";
+            })
+            ->implode(' ');
+
+        $start = (float) $values->first();
+        $end = (float) $values->last();
+
+        return [
+            'points' => $count === 1 ? '0,18 100,18' : $points,
+            'start' => $start,
+            'end' => $end,
+            'direction' => $end <=> $start,
+        ];
     }
 
     /**

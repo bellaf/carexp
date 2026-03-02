@@ -56,7 +56,9 @@ test('authenticated users can view summary report totals', function () {
         ->assertSee('Monthly Trend')
         ->assertSee('150.00')
         ->assertSee('50.00')
-        ->assertSee('100.00');
+        ->assertSee('100.00')
+        ->assertSee('Net cost trend sparkline')
+        ->assertSee('Expense trend sparkline');
 });
 
 test('category report groups ledger entries by account', function () {
@@ -126,7 +128,9 @@ test('fuel report shows fuel metrics from fuel logs', function () {
         ->assertSee('Fuel Trend')
         ->assertSee('45.00')
         ->assertSee('30.000')
-        ->assertSee('33.300');
+        ->assertSee('33.300')
+        ->assertSee('Fuel spend trend sparkline')
+        ->assertSee('Fuel efficiency trend sparkline');
 });
 
 test('fuel report shows weighted average efficiency instead of arithmetic mean', function () {

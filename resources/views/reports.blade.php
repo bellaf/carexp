@@ -52,21 +52,36 @@
 
         @if ($selectedReport === 'summary')
             <div class="grid gap-4 md:grid-cols-4">
-                <flux:card class="space-y-1">
+                <flux:card class="space-y-3">
                     <flux:text>{{ __('Transactions') }}</flux:text>
                     <flux:heading>{{ $summary['transaction_count'] }}</flux:heading>
                 </flux:card>
-                <flux:card class="space-y-1">
+                <flux:card class="space-y-3">
                     <flux:text>{{ __('Expenses') }}</flux:text>
                     <flux:heading class="text-rose-600 dark:text-rose-400">{{ $summary['expense_total'] }}</flux:heading>
+                    @if ($summarySparklines['expenses'] !== null)
+                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Expense trend sparkline') }}">
+                            <polyline points="{{ $summarySparklines['expenses']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-rose-500 dark:text-rose-400" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    @endif
                 </flux:card>
-                <flux:card class="space-y-1">
+                <flux:card class="space-y-3">
                     <flux:text>{{ __('Reimbursements') }}</flux:text>
                     <flux:heading class="text-emerald-600 dark:text-emerald-400">{{ $summary['income_total'] }}</flux:heading>
+                    @if ($summarySparklines['reimbursements'] !== null)
+                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Reimbursement trend sparkline') }}">
+                            <polyline points="{{ $summarySparklines['reimbursements']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-emerald-500 dark:text-emerald-400" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    @endif
                 </flux:card>
-                <flux:card class="space-y-1">
+                <flux:card class="space-y-3">
                     <flux:text>{{ __('Net Cost') }}</flux:text>
                     <flux:heading class="{{ $summary['net_cost_value'] < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($summary['net_cost_value'] > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">{{ $summary['net_cost'] }}</flux:heading>
+                    @if ($summarySparklines['net_cost'] !== null)
+                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Net cost trend sparkline') }}">
+                            <polyline points="{{ $summarySparklines['net_cost']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="{{ $summary['net_cost_value'] < 0 ? 'text-emerald-500 dark:text-emerald-400' : ($summary['net_cost_value'] > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-zinc-500 dark:text-zinc-400') }}" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    @endif
                 </flux:card>
             </div>
 
@@ -181,22 +196,42 @@
 
         @if ($selectedReport === 'fuel')
             <div class="grid gap-4 md:grid-cols-4">
-                <flux:card class="space-y-1">
+                <flux:card class="space-y-3">
                     <flux:text>{{ __('Fill-Ups') }}</flux:text>
                     <flux:heading>{{ $fuelSummary['fill_count'] }}</flux:heading>
+                    @if ($fuelSparklines['fill_count'] !== null)
+                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel fill-up trend sparkline') }}">
+                            <polyline points="{{ $fuelSparklines['fill_count']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-sky-500 dark:text-sky-400" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    @endif
                 </flux:card>
-                <flux:card class="space-y-1">
+                <flux:card class="space-y-3">
                     <flux:text>{{ __('Fuel Spend') }}</flux:text>
                     <flux:heading>{{ $fuelSummary['total_spend'] }}</flux:heading>
+                    @if ($fuelSparklines['spend'] !== null)
+                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel spend trend sparkline') }}">
+                            <polyline points="{{ $fuelSparklines['spend']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-rose-500 dark:text-rose-400" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    @endif
                 </flux:card>
-                <flux:card class="space-y-1">
+                <flux:card class="space-y-3">
                     <flux:text>{{ __('Volume') }}</flux:text>
                     <flux:heading>{{ $fuelSummary['total_volume'] }} {{ $volumeLabel }}</flux:heading>
+                    @if ($fuelSparklines['volume'] !== null)
+                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel volume trend sparkline') }}">
+                            <polyline points="{{ $fuelSparklines['volume']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-amber-500 dark:text-amber-400" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    @endif
                 </flux:card>
-                <flux:card class="space-y-1">
+                <flux:card class="space-y-3">
                     <flux:text>{{ __('Avg Price / Volume') }}</flux:text>
                     <flux:heading>{{ $fuelSummary['average_price'] }}</flux:heading>
                     <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Avg efficiency') }}: {{ $fuelSummary['average_efficiency'] }} {{ $efficiencyLabel }}</flux:text>
+                    @if ($fuelSparklines['efficiency'] !== null)
+                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel efficiency trend sparkline') }}">
+                            <polyline points="{{ $fuelSparklines['efficiency']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-emerald-500 dark:text-emerald-400" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    @endif
                 </flux:card>
             </div>
 
