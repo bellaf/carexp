@@ -543,6 +543,7 @@
         @if ($quickActions->isNotEmpty())
             <div
                 x-show="showQuickActionModal && selectedQuickAction"
+                x-cloak
                 x-transition.opacity
                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
                 x-on:click.self="showQuickActionModal = false"
@@ -655,6 +656,7 @@
 
         <div
             x-show="showServiceModal && selectedService"
+            x-cloak
             x-transition.opacity
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
             x-on:click.self="showServiceModal = false"
@@ -698,6 +700,7 @@
 
         <div
             x-show="showRecurringModal && selectedRecurring"
+            x-cloak
             x-transition.opacity
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
             x-on:click.self="showRecurringModal = false"
@@ -968,6 +971,7 @@
 
                 <div
                     x-show="showEntryModal"
+                    x-cloak
                     x-transition.opacity
                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
                     x-on:click.self="closeEntryModal()"
