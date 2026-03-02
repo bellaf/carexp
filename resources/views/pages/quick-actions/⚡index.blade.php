@@ -381,8 +381,8 @@ new class extends Component {
                     </div>
                     <dl class="mt-3 grid gap-2 text-sm">
                         <div>
-                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Car') }}</dt>
-                            <dd>{{ $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default') }}</dd>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Expense Category') }}</dt>
+                            <dd>{{ $quickAction->entry_target === 'expense' ? ($quickAction->expenseCategory?->name ?? __('Other')) : __('N/A') }}</dd>
                         </div>
                         <div>
                             <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Order') }}</dt>
@@ -398,7 +398,7 @@ new class extends Component {
                     <tr>
                         <th class="px-3 py-2 font-medium">{{ __('Name') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Target') }}</th>
-                        <th class="px-3 py-2 font-medium">{{ __('Car') }}</th>
+                        <th class="px-3 py-2 font-medium">{{ __('Expense Category') }}</th>
                         <th class="px-3 py-2 text-right font-medium">{{ __('Amount') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Status') }}</th>
                         <th class="px-3 py-2 font-medium">{{ __('Order') }}</th>
@@ -416,7 +416,7 @@ new class extends Component {
                                 'mileage_log' => __('Mileage Log'),
                                 default => __('Expense'),
                             } }}</td>
-                            <td class="px-3 py-2">{{ $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default') }}</td>
+                            <td class="px-3 py-2">{{ $quickAction->entry_target === 'expense' ? ($quickAction->expenseCategory?->name ?? __('Other')) : __('N/A') }}</td>
                             <td class="px-3 py-2 text-right">{{ $quickAction->entry_target === 'mileage_log' ? number_format((int) ($quickAction->mileage_distance ?? 0)).' '.__('miles') : $this->formatCurrency($quickAction->amount) }}</td>
                             <td class="px-3 py-2">{{ $quickAction->is_active ? __('Active') : __('Hidden') }}</td>
                             <td class="px-3 py-2">{{ $quickAction->sort_order }}</td>
