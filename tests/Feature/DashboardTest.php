@@ -146,9 +146,9 @@ test('dashboard shows current car ownership cost metrics', function () {
         ->assertOk()
         ->assertSee('Current Car Ownership Metrics')
         ->assertSee('2,000 mi')
-        ->assertSee('$0.13/mi')
-        ->assertSee('$0.10/mi')
-        ->assertSee('$0.05/mi')
+        ->assertSee('£0.13/mi')
+        ->assertSee('£0.10/mi')
+        ->assertSee('£0.05/mi')
         ->assertSee('Total Ownership Cost / mi');
 });
 
@@ -195,7 +195,7 @@ test('dashboard ownership metrics fall back to recorded odometer history when pu
         ->assertOk()
         ->assertSee('Current Car Ownership Metrics')
         ->assertSee('2,000 mi')
-        ->assertSee('$0.06/mi');
+        ->assertSee('£0.06/mi');
 });
 
 test('dashboard transaction type filter narrows table rows', function () {

@@ -100,7 +100,7 @@
                 </div>
 
                 <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
-                    <table class="w-full text-left text-sm">
+                    <table class="w-full text-left text-sm tabular-nums">
                         <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                             <tr>
                                 <th class="px-3 py-2 font-medium">{{ __('Date') }}</th>
