@@ -168,6 +168,7 @@ new class extends Component {
 
     public function startCreatingCategory(): void
     {
+        $this->resetErrorBag('categoryName');
         $this->editingCategoryId = null;
         $this->categoryName = '';
     }
@@ -176,6 +177,7 @@ new class extends Component {
     {
         $category = ExpenseCategory::query()->findOrFail($categoryId);
 
+        $this->resetErrorBag('categoryName');
         $this->editingCategoryId = $category->id;
         $this->categoryName = $category->name;
     }
@@ -216,8 +218,41 @@ new class extends Component {
         }
     }
 
+    public function deleteCategory(int $categoryId): void
+    {
+        $category = ExpenseCategory::query()
+            ->withCount(['expenses', 'quickActions'])
+            ->findOrFail($categoryId);
+
+        if ($category->is_system) {
+            $this->addError('categoryName', 'System categories cannot be deleted.');
+
+            return;
+        }
+
+        if ($category->expenses_count > 0 || $category->quick_actions_count > 0) {
+            $this->addError('categoryName', 'Category cannot be deleted while it is in use.');
+
+            return;
+        }
+
+        $deletedCategoryId = $category->id;
+        $category->delete();
+
+        if ($this->editingCategoryId === $deletedCategoryId) {
+            $this->cancelCategoryForm();
+        }
+
+        if ((int) ($this->form['expense_category_id'] ?: 0) === $deletedCategoryId) {
+            $this->form['expense_category_id'] = (string) ($this->categories->first()?->id ?? '');
+        }
+
+        $this->dispatch('category-saved');
+    }
+
     public function cancelCategoryForm(): void
     {
+        $this->resetErrorBag('categoryName');
         $this->editingCategoryId = null;
         $this->categoryName = '';
     }
@@ -236,7 +271,11 @@ new class extends Component {
     #[Computed]
     public function categories(): Collection
     {
-        return ExpenseCategory::query()->orderBy('name')->get();
+        return ExpenseCategory::query()
+            ->withCount(['expenses', 'quickActions'])
+            ->orderBy('is_system')
+            ->orderBy('name')
+            ->get();
     }
 
     #[Computed]
@@ -422,7 +461,7 @@ new class extends Component {
         <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <flux:modal.trigger name="manage-expense-categories">
                 <flux:button class="w-full sm:w-auto" variant="ghost" wire:click="startCreatingCategory">
-                    {{ __('Edit Categories') }}
+                    {{ __('Manage Categories') }}
                 </flux:button>
             </flux:modal.trigger>
 
@@ -448,37 +487,84 @@ new class extends Component {
         <div class="space-y-5">
             <div>
                 <flux:heading>{{ __('Manage Expense Categories') }}</flux:heading>
-                <flux:subheading>{{ __('Add custom categories or rename existing ones.') }}</flux:subheading>
+                <flux:subheading>{{ __('Create custom categories, rename labels, or remove unused custom ones.') }}</flux:subheading>
             </div>
 
-            <form wire:submit="saveCategory" class="space-y-3">
-                <flux:input
-                    wire:model="categoryName"
-                    :label="$editingCategoryId ? __('Edit Category Name') : __('New Category Name')"
-                    type="text"
-                    required
-                />
+            <div class="grid gap-5 md:grid-cols-[0.9fr_1.1fr]">
+                <form wire:submit="saveCategory" class="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                    <div>
+                        <flux:heading size="sm">{{ $editingCategoryId ? __('Rename Category') : __('Add Category') }}</flux:heading>
+                        <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">
+                            {{ $editingCategoryId ? __('Update the selected category name.') : __('Create a custom category for expenses and quick actions.') }}
+                        </flux:text>
+                    </div>
 
-                <div class="flex items-center gap-2">
-                    <flux:button type="submit" variant="primary">{{ __('Save Category') }}</flux:button>
-                    <flux:modal.close>
-                        <flux:button type="button" variant="ghost" wire:click="cancelCategoryForm">{{ __('Close') }}</flux:button>
-                    </flux:modal.close>
+                    <flux:input
+                        wire:model="categoryName"
+                        :label="$editingCategoryId ? __('Category Name') : __('New Category Name')"
+                        type="text"
+                        required
+                    />
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <flux:button type="submit" variant="primary">{{ $editingCategoryId ? __('Save Rename') : __('Add Category') }}</flux:button>
+                        @if ($editingCategoryId !== null)
+                            <flux:button type="button" variant="ghost" wire:click="cancelCategoryForm">{{ __('Cancel') }}</flux:button>
+                        @endif
+                    </div>
+
+                    @error('categoryName')
+                        <flux:text class="text-sm text-rose-700 dark:text-rose-400">{{ $message }}</flux:text>
+                    @enderror
 
                     <x-action-message on="category-saved">
                         {{ __('Saved.') }}
                     </x-action-message>
-                </div>
-            </form>
+                </form>
 
-            <div class="max-h-80 space-y-2 overflow-auto rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
-                @foreach ($this->categories as $category)
-                    <div class="flex items-center justify-between rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
-                        <flux:text>{{ $category->name }}</flux:text>
+                <div class="space-y-3">
+                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('System categories can be renamed but not deleted. Custom categories can be deleted once unused.') }}</flux:text>
 
-                        <flux:button variant="ghost" wire:click="editCategory({{ $category->id }})">{{ __('Edit') }}</flux:button>
+                    <div class="max-h-96 space-y-2 overflow-auto rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
+                        @foreach ($this->categories as $category)
+                            <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $category->name }}</div>
+                                        <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                            <span class="inline-flex rounded-full border px-2 py-0.5 {{ $category->is_system ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-300' : 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300' }}">
+                                                {{ $category->is_system ? __('System') : __('Custom') }}
+                                            </span>
+                                            <span>{{ trans_choice('{0} Unused|{1} :count expense|[2,*] :count expenses', $category->expenses_count, ['count' => $category->expenses_count]) }}</span>
+                                            <span>{{ trans_choice('{0} No quick actions|{1} :count quick action|[2,*] :count quick actions', $category->quick_actions_count, ['count' => $category->quick_actions_count]) }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        <flux:button variant="ghost" wire:click="editCategory({{ $category->id }})">{{ __('Rename') }}</flux:button>
+                                        @if (! $category->is_system)
+                                            <flux:button
+                                                type="button"
+                                                variant="ghost"
+                                                class="text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
+                                                wire:click="deleteCategory({{ $category->id }})"
+                                                wire:confirm="{{ __('Delete this category? This only works when the category is unused.') }}"
+                                            >
+                                                {{ __('Delete') }}
+                                            </flux:button>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
-                @endforeach
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <flux:modal.close>
+                    <flux:button type="button" variant="ghost" wire:click="cancelCategoryForm">{{ __('Close') }}</flux:button>
+                </flux:modal.close>
             </div>
         </div>
     </flux:modal>
