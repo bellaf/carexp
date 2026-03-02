@@ -21,7 +21,9 @@ test('authenticated users can visit the dashboard', function () {
     $this->actingAs($user);
 
     $response = $this->get(route('dashboard'));
-    $response->assertOk();
+    $response->assertOk()
+        ->assertSee('Tony Bell')
+        ->assertSee('MIT License');
 });
 
 test('dashboard shows running totals from ledger entries', function () {
