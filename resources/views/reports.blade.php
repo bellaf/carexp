@@ -106,7 +106,7 @@
                                     </div>
                                     <div class="col-span-2">
                                         <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Net Cost') }}</dt>
-                                        <dd>{{ $row['net_cost'] }}</dd>
+                                        <dd class="{{ $row['net_cost_value'] < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($row['net_cost_value'] > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ $row['net_cost'] }}</dd>
                                     </div>
                                 </dl>
                             </div>
@@ -129,7 +129,7 @@
                                         <td class="px-3 py-2">{{ $row['month'] }}</td>
                                         <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ $row['expense_total'] }}</td>
                                         <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ $row['income_total'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['net_cost'] }}</td>
+                                        <td class="px-3 py-2 text-right {{ $row['net_cost_value'] < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($row['net_cost_value'] > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ $row['net_cost'] }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
