@@ -33,6 +33,7 @@ class User extends Authenticatable
         'measurement_system',
         'volume_unit',
         'ui_theme',
+        'appearance_mode',
         'timezone',
     ];
 

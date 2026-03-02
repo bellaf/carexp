@@ -3,6 +3,34 @@
 
 <title>{{ $title ?? config('app.name') }}</title>
 
+<script>
+    (() => {
+        const serverAppearance = @js(auth()->user()?->appearance_mode);
+        let appearance = serverAppearance;
+
+        if (! appearance) {
+            try {
+                appearance = window.localStorage.getItem('flux.appearance') || 'system';
+            } catch (error) {
+                appearance = 'system';
+            }
+        } else {
+            try {
+                window.localStorage.setItem('flux.appearance', appearance);
+            } catch (error) {
+            }
+        }
+
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        document.documentElement.classList.toggle(
+            'dark',
+            appearance === 'dark' || (appearance === 'system' && prefersDark),
+        );
+        document.documentElement.dataset.appearance = appearance;
+    })();
+</script>
+
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">

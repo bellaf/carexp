@@ -40,6 +40,7 @@ class UserFactory extends Factory
             'measurement_system' => 'imperial',
             'volume_unit' => 'gallons',
             'ui_theme' => 'classic',
+            'appearance_mode' => 'system',
             'timezone' => 'UTC',
         ];
     }

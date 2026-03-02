@@ -6,6 +6,7 @@ use Livewire\Component;
 
 new class extends Component {
     public string $ui_theme = 'classic';
+    public string $appearance_mode = 'system';
 
     /**
      * @var array<string, string>
@@ -29,23 +30,41 @@ new class extends Component {
 
     public function mount(): void
     {
-        $this->ui_theme = Auth::user()->ui_theme ?: 'classic';
+        $user = Auth::user();
+
+        $this->ui_theme = $user->ui_theme ?: 'classic';
+        $this->appearance_mode = $user->appearance_mode ?: 'system';
     }
 
     public function updateTheme(): void
     {
         $validated = $this->validate([
             'ui_theme' => ['required', Rule::in(array_keys($this->themeOptions))],
+            'appearance_mode' => ['required', Rule::in(['light', 'dark', 'system'])],
         ]);
 
         Auth::user()->update($validated);
 
         $this->dispatch('appearance-updated');
-        $this->dispatch('app-theme-updated', theme: $this->ui_theme);
+        $this->dispatch('app-appearance-updated', theme: $this->ui_theme, appearance: $this->appearance_mode);
     }
 }; ?>
 
-<section class="w-full" x-data x-on:app-theme-updated.window="document.body.dataset.uiTheme = $event.detail.theme">
+<section
+    class="w-full"
+    x-data="{ appearance: $wire.entangle('appearance_mode').live }"
+    x-effect="$flux.appearance = appearance"
+    x-on:app-appearance-updated.window="
+        document.body.dataset.uiTheme = $event.detail.theme;
+        document.documentElement.dataset.appearance = $event.detail.appearance;
+        window.localStorage.setItem('flux.appearance', $event.detail.appearance);
+        document.documentElement.classList.toggle(
+            'dark',
+            $event.detail.appearance === 'dark'
+                || ($event.detail.appearance === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        );
+    "
+>
     @include('partials.settings-heading')
 
     <flux:heading class="sr-only">{{ __('Appearance Settings') }}</flux:heading>
@@ -56,7 +75,7 @@ new class extends Component {
                 <flux:heading size="lg">{{ __('Mode') }}</flux:heading>
                 <flux:text>{{ __('Choose light, dark, or follow your system setting.') }}</flux:text>
 
-                <flux:radio.group x-data variant="segmented" x-model="$flux.appearance">
+                <flux:radio.group variant="segmented" x-model="appearance">
                     <flux:radio value="light" icon="sun">{{ __('Light') }}</flux:radio>
                     <flux:radio value="dark" icon="moon">{{ __('Dark') }}</flux:radio>
                     <flux:radio value="system" icon="computer-desktop">{{ __('System') }}</flux:radio>

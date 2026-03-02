@@ -1,10 +1,29 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title>{{ config('app.name', 'Car Expense Tracker') }}</title>
+
+        <script>
+            (() => {
+                let appearance = 'system';
+
+                try {
+                    appearance = window.localStorage.getItem('flux.appearance') || 'system';
+                } catch (error) {
+                }
+
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+                document.documentElement.classList.toggle(
+                    'dark',
+                    appearance === 'dark' || (appearance === 'system' && prefersDark),
+                );
+                document.documentElement.dataset.appearance = appearance;
+            })();
+        </script>
 
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">

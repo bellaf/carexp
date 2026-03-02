@@ -26,5 +26,7 @@ test('new users can register', function () {
         'preferred_currency' => 'GBP',
         'measurement_system' => 'imperial',
         'volume_unit' => 'gallons',
+        'ui_theme' => 'classic',
+        'appearance_mode' => 'system',
     ]);
 });
