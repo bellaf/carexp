@@ -19,7 +19,7 @@ test('preferences can be updated', function () {
     $response = Livewire::test('pages::settings.preferences')
         ->set('preferred_currency', 'GBP')
         ->set('measurement_system', 'metric')
-        ->set('volume_unit', 'liters')
+        ->set('volume_unit', 'litres')
         ->call('updatePreferences');
 
     $response->assertHasNoErrors();
@@ -28,5 +28,5 @@ test('preferences can be updated', function () {
 
     expect($user->preferred_currency)->toBe('GBP')
         ->and($user->measurement_system)->toBe('metric')
-        ->and($user->volume_unit)->toBe('liters');
+        ->and($user->volume_unit)->toBe('litres');
 });

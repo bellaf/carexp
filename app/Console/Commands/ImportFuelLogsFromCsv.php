@@ -22,7 +22,7 @@ class ImportFuelLogsFromCsv extends Command
         {--file= : Path to CSV file (defaults to single CSV in project root)}
         {--user-id= : User ID that owns imported records}
         {--car-id= : Car ID to assign imported fuel logs}
-        {--volume-unit=liters : Volume unit (litres or gallons)}
+        {--volume-unit=litres : Volume unit (litres or gallons)}
         {--date-format=d/m/Y : Date format used in CSV}
         {--full-tank=1 : Mark imported rows as full tank (1 or 0)}
         {--dry-run : Validate CSV and show summary without writing}
@@ -70,8 +70,12 @@ class ImportFuelLogsFromCsv extends Command
 
         $volumeUnit = (string) $this->option('volume-unit');
 
-        if (! in_array($volumeUnit, ['liters', 'gallons'], true)) {
-            $this->error('Invalid --volume-unit value. Use "liters" or "gallons".');
+        if ($volumeUnit === 'liters') {
+            $volumeUnit = 'litres';
+        }
+
+        if (! in_array($volumeUnit, ['litres', 'gallons'], true)) {
+            $this->error('Invalid --volume-unit value. Use "litres" or "gallons".');
 
             return self::FAILURE;
         }

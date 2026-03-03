@@ -25,7 +25,7 @@ new class extends Component {
      */
     public array $volumeUnitOptions = [
         'gallons' => 'Imperial Gallons',
-        'liters' => 'Litres',
+        'litres' => 'Litres',
     ];
 
     /**
@@ -37,7 +37,7 @@ new class extends Component {
 
         $this->preferred_currency = $user->preferred_currency ?: 'GBP';
         $this->measurement_system = $user->measurement_system ?: 'imperial';
-        $this->volume_unit = $user->volume_unit ?: ($this->measurement_system === 'metric' ? 'liters' : 'gallons');
+        $this->volume_unit = $user->volume_unit ?: ($this->measurement_system === 'metric' ? 'litres' : 'gallons');
     }
 
     /**

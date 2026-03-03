@@ -44,7 +44,7 @@ test('authenticated users can view merged vehicle history', function () {
         'ledger_entry_id' => $fuelLedger->id,
         'log_date' => '2026-02-10',
         'volume' => 34.2,
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
         'full_tank' => true,
     ]);
 

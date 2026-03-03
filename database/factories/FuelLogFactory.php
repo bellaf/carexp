@@ -27,7 +27,7 @@ class FuelLogFactory extends Factory
             'log_date' => $this->faker->date(),
             'odometer' => $this->faker->numberBetween(0, 220000),
             'volume' => $volume,
-            'volume_unit' => $this->faker->randomElement(['gallons', 'liters']),
+            'volume_unit' => $this->faker->randomElement(['gallons', 'litres']),
             'price_per_unit' => $this->faker->randomFloat(3, 1, 8),
             'full_tank' => $this->faker->boolean(90),
             'calculated_efficiency' => $this->faker->optional()->randomFloat(3, 5, 55),

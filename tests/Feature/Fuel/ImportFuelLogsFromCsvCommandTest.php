@@ -24,7 +24,7 @@ test('command imports fuel logs from csv and creates linked ledger entries', fun
         '--file' => $csvPath,
         '--user-id' => $user->id,
         '--car-id' => $car->id,
-        '--volume-unit' => 'liters',
+        '--volume-unit' => 'litres',
         '--date-format' => 'd/m/Y',
     ])->assertSuccessful();
 

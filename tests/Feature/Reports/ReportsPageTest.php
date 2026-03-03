@@ -92,7 +92,7 @@ test('category report groups ledger entries by account', function () {
 test('fuel report shows fuel metrics from fuel logs', function () {
     $user = User::factory()->create([
         'measurement_system' => 'imperial',
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
     ]);
     $car = Car::factory()->for($user)->create();
     $account = Account::factory()->create([
@@ -116,7 +116,7 @@ test('fuel report shows fuel metrics from fuel logs', function () {
         'ledger_entry_id' => $ledgerEntry->id,
         'log_date' => now()->startOfMonth()->addDay()->toDateString(),
         'volume' => 30,
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
         'price_per_unit' => 1.5,
         'full_tank' => true,
         'calculated_efficiency' => 33.3,
@@ -381,7 +381,7 @@ test('ownership report falls back to recorded odometer history when purchase odo
         'log_date' => now()->subMonths(2)->toDateString(),
         'odometer' => 10000,
         'volume' => 20,
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
         'price_per_unit' => 1.2,
         'full_tank' => true,
     ]);

@@ -446,9 +446,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 : (bool) $quickAction->fuel_full_tank;
 
             DB::transaction(function () use ($user, $car, $quickAction, $amountToPost, $fuelVolumeToPost, $odometerToPost, $fullTankToPost): void {
-                $fuelVolumeUnit = in_array($user->volume_unit, ['gallons', 'liters'], true)
+                $fuelVolumeUnit = in_array($user->volume_unit, ['gallons', 'litres'], true)
                     ? $user->volume_unit
-                    : ($user->measurement_system === 'metric' ? 'liters' : 'gallons');
+                    : ($user->measurement_system === 'metric' ? 'litres' : 'gallons');
 
                 $fuelLog = FuelLog::query()->create([
                     'user_id' => $user->id,

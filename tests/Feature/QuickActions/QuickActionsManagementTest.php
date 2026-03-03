@@ -251,7 +251,7 @@ test('dashboard quick action with zero amount requires posted amount override', 
 test('dashboard fuel quick action posts fuel log and ledger entry', function () {
     $user = User::factory()->create([
         'measurement_system' => 'metric',
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
     ]);
     $car = $user->cars()->create([
         'make' => 'Honda',
@@ -287,7 +287,7 @@ test('dashboard fuel quick action posts fuel log and ledger entry', function () 
     expect((int) $fuelLog->car_id)->toBe($car->id)
         ->and((int) $fuelLog->odometer)->toBe(35500)
         ->and((string) $fuelLog->volume)->toBe('30.000')
-        ->and((string) $fuelLog->volume_unit)->toBe('liters')
+        ->and((string) $fuelLog->volume_unit)->toBe('litres')
         ->and((bool) $fuelLog->full_tank)->toBeTrue();
 
     $this->assertDatabaseHas('ledger_entries', [
@@ -303,7 +303,7 @@ test('dashboard fuel quick action posts fuel log and ledger entry', function () 
 test('dashboard fuel quick action can unset full tank flag at run time', function () {
     $user = User::factory()->create([
         'measurement_system' => 'metric',
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
     ]);
     $car = $user->cars()->create([
         'make' => 'Honda',

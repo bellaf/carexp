@@ -95,7 +95,7 @@ class ServiceHistoryController extends Controller
                 'amount_value' => (float) ($fuelLog->ledgerEntry?->amount ?? 0),
                 'amount_type' => 'expense',
                 'details' => [
-                    'Volume' => number_format((float) $fuelLog->volume, 3).' '.($fuelLog->volume_unit === 'liters' ? 'L' : 'gal'),
+                    'Volume' => number_format((float) $fuelLog->volume, 3).' '.($fuelLog->volume_unit === 'litres' ? 'L' : 'gal'),
                     'Price / Unit' => CurrencyFormatter::format((float) $fuelLog->price_per_unit, $user->preferred_currency, 3),
                     'Efficiency' => $fuelLog->calculated_efficiency !== null ? number_format((float) $fuelLog->calculated_efficiency, 3) : 'N/A',
                 ],

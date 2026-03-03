@@ -102,10 +102,10 @@ test('deleting fuel log also removes linked ledger entry', function () {
     $this->assertDatabaseMissing('ledger_entries', ['id' => $fuelLog->ledger_entry_id]);
 });
 
-test('imperial distance with liters volume calculates mpg using conversion', function () {
+test('imperial distance with litres volume calculates mpg using conversion', function () {
     $user = User::factory()->create([
         'measurement_system' => 'imperial',
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
     ]);
     $car = Car::factory()->for($user)->create();
 
@@ -113,7 +113,7 @@ test('imperial distance with liters volume calculates mpg using conversion', fun
         'user_id' => $user->id,
         'odometer' => 10000,
         'volume' => 8,
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
         'full_tank' => true,
     ]);
 
@@ -136,7 +136,7 @@ test('imperial distance with liters volume calculates mpg using conversion', fun
         ->where('odometer', 10100)
         ->firstOrFail();
 
-    expect($fuelLog->volume_unit)->toBe('liters');
+    expect($fuelLog->volume_unit)->toBe('litres');
     expect((float) $fuelLog->calculated_efficiency)->toBe(round(100 / (10 / 4.54609), 3));
 });
 

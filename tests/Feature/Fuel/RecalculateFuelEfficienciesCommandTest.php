@@ -7,7 +7,7 @@ use App\Models\User;
 test('command recalculates stored fuel efficiencies using imperial gallon conversion', function () {
     $user = User::factory()->create([
         'measurement_system' => 'imperial',
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
     ]);
     $car = Car::factory()->for($user)->create();
 
@@ -15,7 +15,7 @@ test('command recalculates stored fuel efficiencies using imperial gallon conver
         'user_id' => $user->id,
         'odometer' => 10000,
         'volume' => 8,
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
         'full_tank' => true,
         'calculated_efficiency' => 12.345,
     ]);
@@ -24,7 +24,7 @@ test('command recalculates stored fuel efficiencies using imperial gallon conver
         'user_id' => $user->id,
         'odometer' => 10100,
         'volume' => 10,
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
         'full_tank' => true,
         'calculated_efficiency' => 20.000,
     ]);

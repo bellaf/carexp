@@ -131,7 +131,7 @@ class RecalculateFuelEfficiencies extends Command
     private function volumeForMeasurementSystem(float $volume, string $volumeUnit, string $measurementSystem): float
     {
         if ($measurementSystem === 'metric') {
-            return $volumeUnit === 'liters'
+            return $volumeUnit === 'litres'
                 ? $volume
                 : ($volume * 4.54609);
         }

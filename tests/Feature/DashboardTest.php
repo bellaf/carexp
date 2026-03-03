@@ -187,7 +187,7 @@ test('dashboard ownership metrics fall back to recorded odometer history when pu
         'log_date' => now()->subMonths(2)->toDateString(),
         'odometer' => 10000,
         'volume' => 20,
-        'volume_unit' => 'liters',
+        'volume_unit' => 'litres',
         'price_per_unit' => 1.2,
         'full_tank' => true,
     ]);

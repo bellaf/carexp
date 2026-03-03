@@ -18,7 +18,7 @@ return new class extends Migration
 
         DB::table('users')
             ->where('measurement_system', 'metric')
-            ->update(['volume_unit' => 'liters']);
+            ->update(['volume_unit' => 'litres']);
 
         Schema::table('fuel_logs', function (Blueprint $table) {
             $table->string('volume_unit', 16)->nullable()->after('volume');

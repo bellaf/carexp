@@ -82,7 +82,7 @@
                                     'requires_amount' => $quickAction->entry_target !== 'mileage_log' && (float) $quickAction->amount <= 0,
                                     'amount_input' => (float) $quickAction->amount > 0 ? (string) $quickAction->amount : '',
                                     'fuel_volume' => $quickAction->fuel_volume !== null ? (float) $quickAction->fuel_volume : null,
-                                    'fuel_volume_display' => $quickAction->fuel_volume !== null ? number_format((float) $quickAction->fuel_volume, 3).' '.(auth()->user()->volume_unit === 'liters' ? 'L' : 'gal') : __('N/A'),
+                                    'fuel_volume_display' => $quickAction->fuel_volume !== null ? number_format((float) $quickAction->fuel_volume, 3).' '.(auth()->user()->volume_unit === 'litres' ? 'L' : 'gal') : __('N/A'),
                                     'requires_fuel_volume' => $quickAction->entry_target === 'fuel_log' && ((float) ($quickAction->fuel_volume ?? 0) <= 0),
                                     'fuel_volume_input' => $quickAction->fuel_volume !== null && (float) $quickAction->fuel_volume > 0 ? (string) $quickAction->fuel_volume : '',
                                     'fuel_full_tank' => (bool) $quickAction->fuel_full_tank,

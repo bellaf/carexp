@@ -74,7 +74,7 @@ class ReportsController extends Controller
             'cars' => $cars,
             'currencyCode' => $user->preferred_currency,
             'efficiencyLabel' => $user->measurement_system === 'metric' ? 'KM/L' : 'MPG',
-            'volumeLabel' => $user->volume_unit === 'liters' ? 'L' : 'gal',
+            'volumeLabel' => $user->volume_unit === 'litres' ? 'L' : 'gal',
             'reportOptions' => $reportOptions,
             'periodOptions' => $periodOptions,
             'selectedReport' => $selectedReport,

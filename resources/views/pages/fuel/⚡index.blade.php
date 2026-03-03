@@ -155,18 +155,18 @@ new class extends Component {
     {
         $user = Auth::user();
 
-        if (in_array($user->volume_unit, ['gallons', 'liters'], true)) {
+        if (in_array($user->volume_unit, ['gallons', 'litres'], true)) {
             return $user->volume_unit;
         }
 
-        return $user->measurement_system === 'metric' ? 'liters' : 'gallons';
+        return $user->measurement_system === 'metric' ? 'litres' : 'gallons';
     }
 
     public function volumeUnitLabel(?string $volumeUnit = null): string
     {
         $unit = $volumeUnit ?: $this->preferredVolumeUnit();
 
-        return $unit === 'liters' ? 'L' : 'gal';
+        return $unit === 'litres' ? 'L' : 'gal';
     }
 
     public function efficiencyLabel(): string
@@ -266,7 +266,7 @@ new class extends Component {
             ? (float) $form['price_per_unit']
             : round($amount / (float) $form['volume'], 3);
 
-        $volumeUnit = in_array($form['volume_unit'] ?? null, ['gallons', 'liters'], true)
+        $volumeUnit = in_array($form['volume_unit'] ?? null, ['gallons', 'litres'], true)
             ? $form['volume_unit']
             : $this->preferredVolumeUnit();
 
@@ -320,7 +320,7 @@ new class extends Component {
     protected function volumeForEfficiency(float $volume, string $volumeUnit): float
     {
         if (Auth::user()->measurement_system === 'metric') {
-            return $volumeUnit === 'liters'
+            return $volumeUnit === 'litres'
                 ? $volume
                 : ($volume * 4.54609);
         }
