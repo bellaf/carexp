@@ -22,7 +22,7 @@ class ImportFuelLogsFromCsv extends Command
         {--file= : Path to CSV file (defaults to single CSV in project root)}
         {--user-id= : User ID that owns imported records}
         {--car-id= : Car ID to assign imported fuel logs}
-        {--volume-unit=liters : Volume unit (liters or gallons)}
+        {--volume-unit=liters : Volume unit (litres or gallons)}
         {--date-format=d/m/Y : Date format used in CSV}
         {--full-tank=1 : Mark imported rows as full tank (1 or 0)}
         {--dry-run : Validate CSV and show summary without writing}

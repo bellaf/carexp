@@ -25,7 +25,7 @@ new class extends Component {
      */
     public array $volumeUnitOptions = [
         'gallons' => 'Imperial Gallons',
-        'liters' => 'Liters',
+        'liters' => 'Litres',
     ];
 
     /**
@@ -72,7 +72,7 @@ new class extends Component {
 
             <flux:radio.group wire:model="measurement_system" :label="__('Measurement system')">
                 <flux:radio value="imperial" :label="__('MPH / Imperial Gallons')" />
-                <flux:radio value="metric" :label="__('KM / Liters')" />
+                <flux:radio value="metric" :label="__('KM / Litres')" />
             </flux:radio.group>
 
             <flux:select wire:model="volume_unit" :label="__('Volume unit')">
