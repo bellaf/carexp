@@ -68,6 +68,49 @@ test('user can create fuel log with auto calculated values and linked ledger ent
     ]);
 });
 
+test('new fuel log defaults odometer from latest known car reading', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'current_odometer' => 12000,
+    ]);
+
+    $user->mileageLogs()->create([
+        'car_id' => $car->id,
+        'log_date' => now()->subDay()->toDateString(),
+        'purpose' => 'Work',
+        'distance' => 145,
+        'start_odometer' => 12100,
+        'end_odometer' => 12345,
+        'is_business' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->assertSet('form.car_id', (string) $car->id)
+        ->assertSet('form.odometer', '12345');
+});
+
+test('changing car while creating fuel log refreshes the default odometer', function () {
+    $user = User::factory()->create();
+    $firstCar = Car::factory()->for($user)->create([
+        'current_odometer' => 15000,
+    ]);
+    $secondCar = Car::factory()->for($user)->create([
+        'current_odometer' => 22000,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $firstCar->id)
+        ->assertSet('form.odometer', '15000')
+        ->set('form.car_id', (string) $secondCar->id)
+        ->assertSet('form.odometer', '22000');
+});
+
 test('deleting fuel log also removes linked ledger entry', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();

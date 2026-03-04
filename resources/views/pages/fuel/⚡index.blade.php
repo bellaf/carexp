@@ -5,6 +5,7 @@ use App\Models\FuelLog;
 use App\Models\LedgerEntry;
 use App\Support\CurrencyFormatter;
 use App\Support\FuelEfficiencyCalculator;
+use App\Support\LatestOdometerResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,10 +36,27 @@ new class extends Component {
         $this->resetForm();
 
         if ($this->cars->isNotEmpty()) {
-            $this->form['car_id'] = (string) $this->cars->first()->id;
+            $carId = (int) $this->cars->first()->id;
+            $this->form['car_id'] = (string) $carId;
+            $this->form['odometer'] = $this->defaultOdometerForCar($carId);
         }
 
         $this->showForm = true;
+    }
+
+    public function updatedFormCarId(string $carId): void
+    {
+        if ($this->editingFuelLogId !== null) {
+            return;
+        }
+
+        if ($carId === '') {
+            $this->form['odometer'] = '';
+
+            return;
+        }
+
+        $this->form['odometer'] = $this->defaultOdometerForCar((int) $carId);
     }
 
     public function editFuelLog(int $fuelLogId): void
@@ -401,6 +419,19 @@ new class extends Component {
             'price_per_unit' => '',
             'full_tank' => true,
         ];
+    }
+
+    protected function defaultOdometerForCar(int $carId): string
+    {
+        $car = $this->cars->firstWhere('id', $carId);
+
+        if ($car === null) {
+            return '';
+        }
+
+        $odometer = app(LatestOdometerResolver::class)->forCar($car);
+
+        return $odometer !== null ? (string) $odometer : '';
     }
 }; ?>
 
