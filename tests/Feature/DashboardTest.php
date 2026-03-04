@@ -18,10 +18,12 @@ test('guests are redirected to the login page', function () {
 
 test('authenticated users can visit the dashboard', function () {
     $user = User::factory()->create();
+    config(['app.version' => '2026-03-42']);
     $this->actingAs($user);
 
     $response = $this->get(route('dashboard'));
     $response->assertOk()
+        ->assertSee('Version 2026-03-42')
         ->assertSee('Tony Bell')
         ->assertSee('MIT License');
 });
