@@ -185,98 +185,102 @@
                         @endif
                     </div>
                 </div>
-            </flux:card>
 
-            <flux:card class="space-y-3">
-                <flux:heading>{{ __('Financial Summary') }}</flux:heading>
-                <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
-                    {{ __('Expenses are shown in red, reimbursements in green, and net values are green when in surplus (negative).') }}
-                </flux:text>
-                <div class="space-y-3 md:hidden">
-                    @foreach ([
-                        __('Expenses') => [
-                            'all_time' => \App\Support\CurrencyFormatter::format($allTimeExpenses, $currencyCode),
-                            'actual' => \App\Support\CurrencyFormatter::format($actualYearExpenses, $currencyCode),
-                            'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingExpenses, $currencyCode),
-                            'year_end' => \App\Support\CurrencyFormatter::format($projectedYearExpenses, $currencyCode),
-                            'tone' => 'text-rose-700 dark:text-rose-400',
-                        ],
-                        __('Reimbursements') => [
-                            'all_time' => \App\Support\CurrencyFormatter::format($allTimeReimbursements, $currencyCode),
-                            'actual' => \App\Support\CurrencyFormatter::format($actualYearReimbursements, $currencyCode),
-                            'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingReimbursements, $currencyCode),
-                            'year_end' => \App\Support\CurrencyFormatter::format($projectedYearReimbursements, $currencyCode),
-                            'tone' => 'text-emerald-700 dark:text-emerald-400',
-                        ],
-                        __('Net Cost') => [
-                            'all_time' => \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode),
-                            'actual' => \App\Support\CurrencyFormatter::format($actualYearNetCost, $currencyCode),
-                            'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingNetCost, $currencyCode),
-                            'year_end' => \App\Support\CurrencyFormatter::format($projectedYearNetCost, $currencyCode),
-                            'tone' => $projectedYearNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($projectedYearNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100'),
-                        ],
-                    ] as $label => $summaryRow)
-                        <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
-                            <div class="mb-3 flex items-center justify-between gap-3">
-                                <flux:text class="font-medium">{{ $label }}</flux:text>
-                                <span class="text-sm font-semibold {{ $summaryRow['tone'] }}">{{ $summaryRow['year_end'] }}</span>
+                <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <flux:text class="font-medium">{{ __('Financial Summary') }}</flux:text>
+                        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
+                            {{ __('Expenses are shown in red, reimbursements in green, and net values are green when in surplus (negative).') }}
+                        </flux:text>
+                    </div>
+
+                    <div class="space-y-3 md:hidden">
+                        @foreach ([
+                            __('Expenses') => [
+                                'all_time' => \App\Support\CurrencyFormatter::format($allTimeExpenses, $currencyCode),
+                                'actual' => \App\Support\CurrencyFormatter::format($actualYearExpenses, $currencyCode),
+                                'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingExpenses, $currencyCode),
+                                'year_end' => \App\Support\CurrencyFormatter::format($projectedYearExpenses, $currencyCode),
+                                'tone' => 'text-rose-700 dark:text-rose-400',
+                            ],
+                            __('Reimbursements') => [
+                                'all_time' => \App\Support\CurrencyFormatter::format($allTimeReimbursements, $currencyCode),
+                                'actual' => \App\Support\CurrencyFormatter::format($actualYearReimbursements, $currencyCode),
+                                'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingReimbursements, $currencyCode),
+                                'year_end' => \App\Support\CurrencyFormatter::format($projectedYearReimbursements, $currencyCode),
+                                'tone' => 'text-emerald-700 dark:text-emerald-400',
+                            ],
+                            __('Net Cost') => [
+                                'all_time' => \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode),
+                                'actual' => \App\Support\CurrencyFormatter::format($actualYearNetCost, $currencyCode),
+                                'remaining' => \App\Support\CurrencyFormatter::format($projectedRemainingNetCost, $currencyCode),
+                                'year_end' => \App\Support\CurrencyFormatter::format($projectedYearNetCost, $currencyCode),
+                                'tone' => $projectedYearNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($projectedYearNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100'),
+                            ],
+                        ] as $label => $summaryRow)
+                            <div class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <flux:text class="font-medium">{{ $label }}</flux:text>
+                                    <span class="text-sm font-semibold {{ $summaryRow['tone'] }}">{{ $summaryRow['year_end'] }}</span>
+                                </div>
+                                <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                    <div>
+                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('All-Time') }}</dt>
+                                        <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['all_time'] }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Actual YTD') }}</dt>
+                                        <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['actual'] }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Projected Remaining') }}</dt>
+                                        <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['remaining'] }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Projected Year-End') }}</dt>
+                                        <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['year_end'] }}</dd>
+                                    </div>
+                                </dl>
                             </div>
-                            <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                <div>
-                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('All-Time') }}</dt>
-                                    <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['all_time'] }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Actual YTD') }}</dt>
-                                    <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['actual'] }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Projected Remaining') }}</dt>
-                                    <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['remaining'] }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Projected Year-End') }}</dt>
-                                    <dd class="{{ $summaryRow['tone'] }}">{{ $summaryRow['year_end'] }}</dd>
-                                </div>
-                            </dl>
-                        </div>
-                    @endforeach
-                </div>
-                <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
-                    <table class="w-full min-w-[860px] text-left text-sm tabular-nums">
-                        <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                            <tr>
-                                <th class="px-3 py-2 font-medium">{{ __('Metric') }}</th>
-                                <th class="px-3 py-2 text-right font-medium">{{ __('All-Time') }}</th>
-                                <th class="px-3 py-2 text-right font-medium">{{ __('Actual YTD') }}</th>
-                                <th class="px-3 py-2 text-right font-medium">{{ __('Projected Remaining') }}</th>
-                                <th class="px-3 py-2 text-right font-medium">{{ __('Projected Year-End') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="border-t border-zinc-200 dark:border-zinc-700">
-                                <td class="px-3 py-2 font-medium text-rose-700 dark:text-rose-400">{{ __('Expenses') }}</td>
-                                <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($allTimeExpenses, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($actualYearExpenses, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($projectedRemainingExpenses, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($projectedYearExpenses, $currencyCode) }}</td>
-                            </tr>
-                            <tr class="border-t border-zinc-200 dark:border-zinc-700">
-                                <td class="px-3 py-2 font-medium text-emerald-700 dark:text-emerald-400">{{ __('Reimbursements') }}</td>
-                                <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($allTimeReimbursements, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($actualYearReimbursements, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($projectedRemainingReimbursements, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($projectedYearReimbursements, $currencyCode) }}</td>
-                            </tr>
-                            <tr class="border-t border-zinc-200 font-medium dark:border-zinc-700">
-                                <td class="px-3 py-2">{{ __('Net Cost') }}</td>
-                                <td class="px-3 py-2 text-right {{ $allTimeNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($allTimeNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right {{ $actualYearNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($actualYearNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ \App\Support\CurrencyFormatter::format($actualYearNetCost, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right {{ $projectedRemainingNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($projectedRemainingNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ \App\Support\CurrencyFormatter::format($projectedRemainingNetCost, $currencyCode) }}</td>
-                                <td class="px-3 py-2 text-right {{ $projectedYearNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($projectedYearNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ \App\Support\CurrencyFormatter::format($projectedYearNetCost, $currencyCode) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                        @endforeach
+                    </div>
+
+                    <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
+                        <table class="w-full min-w-[860px] text-left text-sm tabular-nums">
+                            <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                                <tr>
+                                    <th class="px-3 py-2 font-medium">{{ __('Metric') }}</th>
+                                    <th class="px-3 py-2 text-right font-medium">{{ __('All-Time') }}</th>
+                                    <th class="px-3 py-2 text-right font-medium">{{ __('Actual YTD') }}</th>
+                                    <th class="px-3 py-2 text-right font-medium">{{ __('Projected Remaining') }}</th>
+                                    <th class="px-3 py-2 text-right font-medium">{{ __('Projected Year-End') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-t border-zinc-200 dark:border-zinc-700">
+                                    <td class="px-3 py-2 font-medium text-rose-700 dark:text-rose-400">{{ __('Expenses') }}</td>
+                                    <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($allTimeExpenses, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($actualYearExpenses, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($projectedRemainingExpenses, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($projectedYearExpenses, $currencyCode) }}</td>
+                                </tr>
+                                <tr class="border-t border-zinc-200 dark:border-zinc-700">
+                                    <td class="px-3 py-2 font-medium text-emerald-700 dark:text-emerald-400">{{ __('Reimbursements') }}</td>
+                                    <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($allTimeReimbursements, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($actualYearReimbursements, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($projectedRemainingReimbursements, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($projectedYearReimbursements, $currencyCode) }}</td>
+                                </tr>
+                                <tr class="border-t border-zinc-200 font-medium dark:border-zinc-700">
+                                    <td class="px-3 py-2">{{ __('Net Cost') }}</td>
+                                    <td class="px-3 py-2 text-right {{ $allTimeNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($allTimeNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right {{ $actualYearNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($actualYearNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ \App\Support\CurrencyFormatter::format($actualYearNetCost, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right {{ $projectedRemainingNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($projectedRemainingNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ \App\Support\CurrencyFormatter::format($projectedRemainingNetCost, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right {{ $projectedYearNetCost < 0 ? 'text-emerald-700 dark:text-emerald-400' : ($projectedYearNetCost > 0 ? 'text-rose-700 dark:text-rose-400' : '') }}">{{ \App\Support\CurrencyFormatter::format($projectedYearNetCost, $currencyCode) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </flux:card>
 
