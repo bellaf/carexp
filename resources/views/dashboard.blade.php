@@ -129,12 +129,6 @@
                         </div>
                         <dl class="grid gap-3 sm:grid-cols-3">
                             <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
-                                <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('All-Time') }}</dt>
-                                <dd class="mt-1 text-lg font-semibold {{ $allTimeNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($allTimeNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
-                                    {{ \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode) }}
-                                </dd>
-                            </div>
-                            <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
                                 <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('This Month') }}</dt>
                                 <dd class="mt-1 text-lg font-semibold {{ $monthNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($monthNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
                                     {{ \App\Support\CurrencyFormatter::format($monthNetCost, $currencyCode) }}
@@ -144,6 +138,12 @@
                                 <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('Projected Year-End') }}</dt>
                                 <dd class="mt-1 text-lg font-semibold {{ $projectedYearNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($projectedYearNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
                                     {{ \App\Support\CurrencyFormatter::format($projectedYearNetCost, $currencyCode) }}
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('All-Time') }}</dt>
+                                <dd class="mt-1 text-lg font-semibold {{ $allTimeNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($allTimeNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
+                                    {{ \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode) }}
                                 </dd>
                             </div>
                         </dl>
