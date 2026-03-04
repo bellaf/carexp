@@ -272,7 +272,7 @@
                     @if ($upcomingMaintenance->isEmpty())
                         <flux:text>{{ __('No service due in the next 14 days.') }}</flux:text>
                     @else
-                        <div class="space-y-3 md:hidden">
+                        <div class="space-y-3">
                             @foreach ($upcomingMaintenance as $record)
                                 @php
                                     $currentOdometer = $record->car?->current_odometer;
@@ -328,65 +328,9 @@
                                 </button>
                             @endforeach
                         </div>
-                        <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
-                            <table class="w-full min-w-[520px] text-left text-sm tabular-nums">
-                                <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                                    <tr>
-                                        <th class="px-3 py-2 font-medium">{{ __('Due Date') }}</th>
-                                        <th class="px-3 py-2 font-medium">{{ __('Service') }}</th>
-                                        <th class="px-3 py-2 font-medium">{{ __('Odometer') }}</th>
-                                        <th class="px-3 py-2 font-medium">{{ __('Trigger') }}</th>
-                                        <th class="px-3 py-2 font-medium">{{ __('Car') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($upcomingMaintenance as $record)
-                                        @php
-                                            $currentOdometer = $record->car?->current_odometer;
-                                            $dateTriggered = $record->next_due_date !== null
-                                                && $record->next_due_date->gte(now()->startOfDay())
-                                                && $record->next_due_date->lte(now()->addDays(14)->endOfDay());
-                                            $odometerTriggered = $record->next_due_odometer !== null
-                                                && $currentOdometer !== null
-                                                && $currentOdometer >= ((int) $record->next_due_odometer - 500);
-                                            $triggerLabel = $dateTriggered && $odometerTriggered
-                                                ? __('Date + Odometer')
-                                                : ($dateTriggered ? __('Date') : __('Odometer'));
-                                            $servicePayload = [
-                                                'id' => $record->id,
-                                                'service_type' => (string) $record->service_type,
-                                                'next_due_date' => $record->next_due_date?->format('Y-m-d'),
-                                                'next_due_date_display' => $record->next_due_date?->format('d-m-Y') ?? __('N/A'),
-                                                'next_due_odometer' => $record->next_due_odometer,
-                                                'current_odometer' => $currentOdometer,
-                                                'trigger' => $triggerLabel,
-                                                'car' => trim(collect([$record->car?->year, $record->car?->make, $record->car?->model])->filter()->implode(' ')) ?: __('N/A'),
-                                                'notes' => $record->notes ?? '',
-                                            ];
-                                        @endphp
-                                        <tr
-                                            class="cursor-pointer border-t border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900/70"
-                                            tabindex="0"
-                                            x-on:click='selectedService = @json($servicePayload); showServiceModal = true'
-                                            x-on:keydown.enter='selectedService = @json($servicePayload); showServiceModal = true'
-                                        >
-                                            <td class="px-3 py-2">{{ $record->next_due_date?->format('d-m-Y') }}</td>
-                                            <td class="px-3 py-2">{{ $record->service_type }}</td>
-                                            <td class="px-3 py-2">
-                                                @if ($record->next_due_odometer !== null)
-                                                    {{ number_format((int) $currentOdometer) }}/{{ number_format((int) $record->next_due_odometer) }}
-                                                @else
-                                                    {{ __('N/A') }}
-                                                @endif
-                                            </td>
-                                            <td class="px-3 py-2">{{ $triggerLabel }}</td>
-                                            <td class="px-3 py-2">
-                                                {{ trim(collect([$record->car?->year, $record->car?->make, $record->car?->model])->filter()->implode(' ')) ?: __('N/A') }}
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+
+                        <div class="pt-1">
+                            <flux:button variant="ghost" :href="route('maintenance.index')" wire:navigate>{{ __('Manage Maintenance') }}</flux:button>
                         </div>
                     @endif
                 </flux:card>
@@ -400,7 +344,7 @@
                     @if ($upcomingRecurringTransactions->isEmpty())
                         <flux:text>{{ __('No recurring transactions due in the next 14 days.') }}</flux:text>
                     @else
-                        <div class="space-y-3 md:hidden">
+                        <div class="space-y-3">
                             @foreach ($upcomingRecurringTransactions as $schedule)
                                 @php
                                     $recurringPayload = [
@@ -442,45 +386,9 @@
                                 </button>
                             @endforeach
                         </div>
-                        <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
-                            <table class="w-full min-w-[520px] text-left text-sm tabular-nums">
-                                <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                                    <tr>
-                                        <th class="px-3 py-2 font-medium">{{ __('Due Date') }}</th>
-                                        <th class="px-3 py-2 font-medium">{{ __('Type') }}</th>
-                                        <th class="px-3 py-2 font-medium">{{ __('Account') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($upcomingRecurringTransactions as $schedule)
-                                        @php
-                                            $recurringPayload = [
-                                                'id' => $schedule->id,
-                                                'next_entry_date' => $schedule->next_entry_date->format('Y-m-d'),
-                                                'next_entry_date_display' => $schedule->next_entry_date->format('d-m-Y'),
-                                                'entry_type' => (string) $schedule->entry_type,
-                                                'account' => (string) ($schedule->account?->name ?? __('N/A')),
-                                                'amount' => (string) $schedule->amount,
-                                                'cadence' => (string) $schedule->cadence,
-                                                'end_date' => $schedule->end_date?->format('Y-m-d'),
-                                                'reference' => $schedule->reference ?? '',
-                                                'notes' => $schedule->notes ?? '',
-                                                'is_active' => (bool) $schedule->is_active,
-                                            ];
-                                        @endphp
-                                        <tr
-                                            class="cursor-pointer border-t border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900/70"
-                                            tabindex="0"
-                                            x-on:click='selectedRecurring = @json($recurringPayload); showRecurringModal = true'
-                                            x-on:keydown.enter='selectedRecurring = @json($recurringPayload); showRecurringModal = true'
-                                        >
-                                            <td class="px-3 py-2">{{ $schedule->next_entry_date->format('d-m-Y') }}</td>
-                                            <td class="px-3 py-2">{{ $schedule->entry_type === 'income' ? __('Reimbursement') : __('Expense') }}</td>
-                                            <td class="px-3 py-2">{{ $schedule->account?->name ?? __('N/A') }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+
+                        <div class="pt-1">
+                            <flux:button variant="ghost" :href="route('recurring.index')" wire:navigate>{{ __('Manage Recurring') }}</flux:button>
                         </div>
                     @endif
                 </flux:card>

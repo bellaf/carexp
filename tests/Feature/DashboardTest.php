@@ -546,7 +546,9 @@ test('dashboard shows upcoming service and recurring indicators for next 14 days
         ->assertSee('Service Due (Next 14 Days)')
         ->assertSee('Recurring Due (Next 14 Days)')
         ->assertSee('oil_change')
-        ->assertSee('Insurance');
+        ->assertSee('Insurance')
+        ->assertSee('Manage Maintenance')
+        ->assertSee('Manage Recurring');
 });
 
 test('dashboard shows upcoming obligations due within 30 days', function () {
