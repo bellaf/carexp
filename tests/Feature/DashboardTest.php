@@ -86,7 +86,7 @@ test('dashboard shows running totals from ledger entries', function () {
 
     $this->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Net Cost (All-Time)')
+        ->assertSee('Summary Snapshot')
         ->assertSee('Financial Summary')
         ->assertSee('Current Car')
         ->assertSee('Tap once to capture a common entry quickly.')
@@ -162,6 +162,7 @@ test('dashboard shows current car ownership cost metrics', function () {
         ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('Current Car Ownership Metrics')
+        ->assertSee('Summary Snapshot')
         ->assertSee('2,000 mi')
         ->assertSee('£0.13/mi')
         ->assertSee('£0.10/mi')
@@ -409,7 +410,7 @@ test('dashboard shows actual ytd and projected remaining totals', function () {
         ->assertOk()
         ->assertSee('Actual YTD')
         ->assertSee('Projected Remaining')
-        ->assertSee('Projected Year-End Net Cost')
+        ->assertSee('Projected Year-End')
         ->assertSee('200.00')
         ->assertSee('80.00')
         ->assertSee('300.00')
@@ -502,7 +503,7 @@ test('dashboard year-end projection includes active obligations due before year 
         ->assertOk()
         ->assertSee('Projected Remaining')
         ->assertSee('420.00')
-        ->assertSee('Projected Year-End Net Cost')
+        ->assertSee('Projected Year-End')
         ->assertSee('440.00');
 });
 

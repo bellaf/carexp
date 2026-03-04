@@ -112,61 +112,79 @@
                 </flux:card>
             @endif
 
-            <div class="grid gap-4 md:grid-cols-3">
-                <flux:card class="space-y-1">
-                    <flux:text>{{ __('Net Cost (All-Time)') }}</flux:text>
-                    <flux:heading class="{{ $allTimeNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($allTimeNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
-                        {{ \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode) }}
-                    </flux:heading>
-                </flux:card>
-
-                <flux:card class="space-y-1">
-                    <flux:text>{{ __('Net Cost (This Month)') }}</flux:text>
-                    <flux:heading class="{{ $monthNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($monthNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
-                        {{ \App\Support\CurrencyFormatter::format($monthNetCost, $currencyCode) }}
-                    </flux:heading>
-                </flux:card>
-
-                <flux:card class="space-y-1">
-                    <flux:text>{{ __('Projected Year-End Net Cost') }}</flux:text>
-                    <flux:heading class="{{ $projectedYearNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($projectedYearNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
-                        {{ \App\Support\CurrencyFormatter::format($projectedYearNetCost, $currencyCode) }}
-                    </flux:heading>
-                </flux:card>
-            </div>
-
             <flux:card class="space-y-3">
                 <div class="flex items-center justify-between gap-3">
-                    <flux:heading>{{ __('Current Car Ownership Metrics') }}</flux:heading>
-                    <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('All-time running costs based on purchase to current odometer.') }}</flux:text>
+                    <div>
+                        <flux:heading>{{ __('Summary Snapshot') }}</flux:heading>
+                        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Financial headlines and current-car running costs in one view.') }}</flux:text>
+                    </div>
+                    <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('All-time running costs are based on purchase to current odometer.') }}</flux:text>
                 </div>
 
-                @if ($currentCar === null || $currentCarOwnershipMetrics === null)
-                    <flux:text>{{ __('Set a current car to view ownership metrics.') }}</flux:text>
-                @else
-                    <div class="grid gap-4 md:grid-cols-5">
-                        <flux:card class="space-y-1">
-                            <flux:text>{{ __('Distance Travelled') }}</flux:text>
-                            <flux:heading>{{ $currentCarOwnershipMetrics['distance_display'] }}</flux:heading>
-                        </flux:card>
-                        <flux:card class="space-y-1">
-                            <flux:text>{{ __('Net Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
-                            <flux:heading>{{ $currentCarOwnershipMetrics['net_cost_per_distance_display'] }}</flux:heading>
-                        </flux:card>
-                        <flux:card class="space-y-1">
-                            <flux:text>{{ __('Fuel Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
-                            <flux:heading>{{ $currentCarOwnershipMetrics['fuel_cost_per_distance_display'] }}</flux:heading>
-                        </flux:card>
-                        <flux:card class="space-y-1">
-                            <flux:text>{{ __('Maintenance Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
-                            <flux:heading>{{ $currentCarOwnershipMetrics['maintenance_cost_per_distance_display'] }}</flux:heading>
-                        </flux:card>
-                        <flux:card class="space-y-1">
-                            <flux:text>{{ __('Total Ownership Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</flux:text>
-                            <flux:heading>{{ $currentCarOwnershipMetrics['total_ownership_cost_per_distance_display'] }}</flux:heading>
-                        </flux:card>
+                <div class="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
+                    <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                        <div class="mb-3 flex items-center justify-between gap-3">
+                            <flux:text class="font-medium">{{ __('Net Cost') }}</flux:text>
+                            <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Green indicates surplus / lower net cost.') }}</flux:text>
+                        </div>
+                        <dl class="grid gap-3 sm:grid-cols-3">
+                            <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('All-Time') }}</dt>
+                                <dd class="mt-1 text-lg font-semibold {{ $allTimeNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($allTimeNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
+                                    {{ \App\Support\CurrencyFormatter::format($allTimeNetCost, $currencyCode) }}
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('This Month') }}</dt>
+                                <dd class="mt-1 text-lg font-semibold {{ $monthNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($monthNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
+                                    {{ \App\Support\CurrencyFormatter::format($monthNetCost, $currencyCode) }}
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('Projected Year-End') }}</dt>
+                                <dd class="mt-1 text-lg font-semibold {{ $projectedYearNetCost < 0 ? 'text-emerald-600 dark:text-emerald-400' : ($projectedYearNetCost > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100') }}">
+                                    {{ \App\Support\CurrencyFormatter::format($projectedYearNetCost, $currencyCode) }}
+                                </dd>
+                            </div>
+                        </dl>
                     </div>
-                @endif
+
+                    <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                        <div class="mb-3 flex items-center justify-between gap-3">
+                            <flux:text class="font-medium">{{ __('Current Car Ownership Metrics') }}</flux:text>
+                            @if ($currentCar !== null)
+                                <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ trim(collect([$currentCar->year, $currentCar->make, $currentCar->model])->filter()->implode(' ')) }}</flux:text>
+                            @endif
+                        </div>
+
+                        @if ($currentCar === null || $currentCarOwnershipMetrics === null)
+                            <flux:text>{{ __('Set a current car to view ownership metrics.') }}</flux:text>
+                        @else
+                            <dl class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                    <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('Distance Travelled') }}</dt>
+                                    <dd class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $currentCarOwnershipMetrics['distance_display'] }}</dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                    <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('Net Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</dt>
+                                    <dd class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $currentCarOwnershipMetrics['net_cost_per_distance_display'] }}</dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                    <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('Fuel Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</dt>
+                                    <dd class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $currentCarOwnershipMetrics['fuel_cost_per_distance_display'] }}</dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                    <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('Maintenance Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</dt>
+                                    <dd class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $currentCarOwnershipMetrics['maintenance_cost_per_distance_display'] }}</dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40 sm:col-span-2 xl:col-span-2">
+                                    <dt class="text-xs uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">{{ __('Total Ownership Cost / '.$currentCarOwnershipMetrics['unit_label']) }}</dt>
+                                    <dd class="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $currentCarOwnershipMetrics['total_ownership_cost_per_distance_display'] }}</dd>
+                                </div>
+                            </dl>
+                        @endif
+                    </div>
+                </div>
             </flux:card>
 
             <flux:card class="space-y-3">
