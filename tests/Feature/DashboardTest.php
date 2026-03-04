@@ -28,6 +28,19 @@ test('authenticated users can visit the dashboard', function () {
         ->assertSee('MIT License');
 });
 
+test('dashboard about section hides the version when app version is unset', function () {
+    $user = User::factory()->create();
+    config(['app.version' => null]);
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('Version development')
+        ->assertDontSee('Version ')
+        ->assertSee('Tony Bell')
+        ->assertSee('MIT License');
+});
+
 test('dashboard shows running totals from ledger entries', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
