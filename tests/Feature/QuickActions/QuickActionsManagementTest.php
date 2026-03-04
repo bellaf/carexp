@@ -345,3 +345,47 @@ test('dashboard fuel quick action can unset full tank flag at run time', functio
         ->and((int) $fuelLog->odometer)->toBe(35600)
         ->and((bool) $fuelLog->full_tank)->toBeFalse();
 });
+
+test('dashboard fuel quick action defaults odometer from latest known car reading', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'metric',
+        'volume_unit' => 'litres',
+    ]);
+    $car = $user->cars()->create([
+        'make' => 'Honda',
+        'model' => 'Civic',
+        'year' => 2018,
+        'current_odometer' => 35200,
+        'is_default' => true,
+    ]);
+    $category = ExpenseCategory::factory()->create(['key' => 'fuel', 'name' => 'Fuel']);
+
+    $user->mileageLogs()->create([
+        'car_id' => $car->id,
+        'log_date' => now()->subDay()->toDateString(),
+        'purpose' => 'Work',
+        'distance' => 145,
+        'start_odometer' => 35100,
+        'end_odometer' => 35225,
+        'is_business' => true,
+    ]);
+
+    $quickAction = QuickAction::factory()->for($user)->create([
+        'car_id' => $car->id,
+        'expense_category_id' => $category->id,
+        'entry_target' => 'fuel_log',
+        'name' => 'Quick Fuel',
+        'amount' => 40.00,
+        'fuel_volume' => 30.000,
+        'fuel_full_tank' => true,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('dashboard.quick-actions.run', $quickAction))
+        ->assertRedirect(route('dashboard'));
+
+    $fuelLog = FuelLog::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
+
+    expect((int) $fuelLog->odometer)->toBe(35225);
+});

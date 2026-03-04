@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ServiceHistoryController;
 use App\Models\Account;
+use App\Models\Car;
 use App\Models\Expense;
 use App\Models\FuelLog;
 use App\Models\LedgerEntry;
@@ -232,6 +233,13 @@ Route::get('dashboard', function (Request $request) {
         ->unique()
         ->values();
 
+    $latestOdometerByCar = $user->cars()
+        ->where('is_archived', false)
+        ->when($quickActionCarIds->isNotEmpty(), fn ($query) => $query->whereIn('id', $quickActionCarIds))
+        ->get()
+        ->mapWithKeys(fn (Car $car): array => [$car->id => app(LatestOdometerResolver::class)->forCar($car)])
+        ->all();
+
     $latestMileageEndByCar = MileageLog::query()
         ->where('user_id', $user->id)
         ->when($quickActionCarIds->isNotEmpty(), fn ($query) => $query->whereIn('car_id', $quickActionCarIds))
@@ -335,6 +343,7 @@ Route::get('dashboard', function (Request $request) {
         'upcomingObligationsCount' => (int) $upcomingObligationsAll->count(),
         'upcomingObligations' => $upcomingObligations,
         'quickActions' => $quickActions,
+        'latestOdometerByCar' => $latestOdometerByCar,
         'latestMileageEndByCar' => $latestMileageEndByCar,
         'totalTransactions' => (int) (clone $ledgerEntries)->count(),
         'transactions' => $transactions,
@@ -389,11 +398,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         if ($quickAction->entry_target === 'mileage_log') {
             $startOdometer = isset($validated['start_odometer'])
                 ? (int) $validated['start_odometer']
-                : (int) ($user->mileageLogs()
-                    ->where('car_id', $car->id)
-                    ->orderByDesc('log_date')
-                    ->orderByDesc('id')
-                    ->value('end_odometer') ?? $car->current_odometer ?? 0);
+                : (int) (app(LatestOdometerResolver::class)->forCar($car) ?? 0);
             $distance = $quickAction->mileage_distance !== null ? (int) $quickAction->mileage_distance : 0;
 
             if ($distance <= 0) {
@@ -441,7 +446,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             $odometerToPost = isset($validated['odometer'])
                 ? (int) $validated['odometer']
-                : (int) ($car->current_odometer ?? 0);
+                : (int) (app(LatestOdometerResolver::class)->forCar($car) ?? 0);
             $fullTankToPost = array_key_exists('full_tank', $validated)
                 ? (bool) $validated['full_tank']
                 : (bool) $quickAction->fuel_full_tank;

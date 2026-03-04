@@ -78,3 +78,48 @@ test('dashboard mileage quick action posts mileage log using standard trip miles
     expect($mileageLog->log_date->toDateString())->toBe(now()->toDateString())
         ->and($mileageLog->locations)->toBe('Office, Warehouse');
 });
+
+test('dashboard mileage quick action defaults start odometer from latest known car reading', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'current_odometer' => 15000,
+        'is_default' => true,
+    ]);
+    $category = ExpenseCategory::factory()->create(['key' => 'other', 'name' => 'Other']);
+
+    $user->fuelLogs()->create([
+        'car_id' => $car->id,
+        'ledger_entry_id' => null,
+        'log_date' => now()->subDay()->toDateString(),
+        'odometer' => 15120,
+        'volume' => 20,
+        'volume_unit' => 'litres',
+        'price_per_unit' => 1.5,
+        'full_tank' => true,
+        'calculated_efficiency' => null,
+    ]);
+
+    $quickAction = QuickAction::factory()->for($user)->create([
+        'car_id' => $car->id,
+        'expense_category_id' => $category->id,
+        'entry_target' => 'mileage_log',
+        'name' => 'Office Loop',
+        'amount' => 0,
+        'mileage_locations' => 'Office, Warehouse',
+        'mileage_distance' => 36,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('dashboard.quick-actions.run', $quickAction))
+        ->assertRedirect(route('dashboard'));
+
+    $mileageLog = MileageLog::query()
+        ->where('user_id', $user->id)
+        ->where('car_id', $car->id)
+        ->latest('id')
+        ->firstOrFail();
+
+    expect((int) $mileageLog->start_odometer)->toBe(15120)
+        ->and((int) $mileageLog->end_odometer)->toBe(15156);
+});

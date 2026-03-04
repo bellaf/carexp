@@ -261,6 +261,39 @@ test('dashboard transaction type filter narrows table rows', function () {
         ->assertDontSee('Brake Service Work');
 });
 
+test('dashboard quick action modal uses latest known odometer defaults', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'current_odometer' => 35000,
+        'is_default' => true,
+    ]);
+    $category = ExpenseCategory::factory()->create(['key' => 'fuel', 'name' => 'Fuel']);
+
+    $user->mileageLogs()->create([
+        'car_id' => $car->id,
+        'log_date' => now()->subDay()->toDateString(),
+        'purpose' => 'Work',
+        'distance' => 145,
+        'start_odometer' => 35100,
+        'end_odometer' => 35225,
+        'is_business' => true,
+    ]);
+
+    QuickAction::factory()->for($user)->create([
+        'car_id' => $car->id,
+        'expense_category_id' => $category->id,
+        'entry_target' => 'fuel_log',
+        'name' => 'Quick Fuel',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Quick Fuel')
+        ->assertSee('35225');
+});
+
 test('dashboard period filter narrows table rows', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();

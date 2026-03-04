@@ -74,6 +74,7 @@
                         @foreach ($quickActions as $quickAction)
                             @php
                                 $mileageCarId = $quickAction->car_id ?? $currentCar?->id;
+                                $defaultOdometer = $mileageCarId !== null ? ($latestOdometerByCar[$mileageCarId] ?? null) : null;
                                 $quickActionPayload = [
                                     'name' => $quickAction->name,
                                     'entry_target' => $quickAction->entry_target,
@@ -88,9 +89,9 @@
                                     'fuel_full_tank' => (bool) $quickAction->fuel_full_tank,
                                     'mileage_locations' => $quickAction->mileage_locations ?? '',
                                     'mileage_distance' => (int) ($quickAction->mileage_distance ?? 0),
-                                    'start_odometer_input' => (string) (($mileageCarId !== null ? ($latestMileageEndByCar[$mileageCarId] ?? null) : null) ?? $quickAction->car?->current_odometer ?? $currentCar?->current_odometer ?? 0),
+                                    'start_odometer_input' => (string) ($defaultOdometer ?? 0),
                                     'requires_mileage' => $quickAction->entry_target === 'mileage_log',
-                                    'odometer_input' => (string) ($quickAction->car?->current_odometer ?? $currentCar?->current_odometer ?? 0),
+                                    'odometer_input' => (string) ($defaultOdometer ?? 0),
                                     'requires_user_input' => $quickAction->entry_target === 'mileage_log' || $quickAction->entry_target === 'fuel_log' || (float) $quickAction->amount <= 0 || ($quickAction->entry_target === 'fuel_log' && ((float) ($quickAction->fuel_volume ?? 0) <= 0)),
                                     'vendor' => $quickAction->vendor ?? __('N/A'),
                                     'car' => $quickAction->car ? trim(collect([$quickAction->car->year, $quickAction->car->make, $quickAction->car->model])->filter()->implode(' ')) : __('Default Car'),
