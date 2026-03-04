@@ -5,6 +5,7 @@ use App\Models\Attachment;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\LedgerEntry;
+use App\Models\Car;
 use App\Support\AttachmentManager;
 use App\Support\CurrencyFormatter;
 use App\Support\ExpenseAccountResolver;
@@ -49,10 +50,27 @@ new class extends Component {
         }
 
         if ($this->cars->isNotEmpty()) {
-            $this->form['car_id'] = (string) $this->cars->first()->id;
+            $carId = (int) $this->cars->first()->id;
+            $this->form['car_id'] = (string) $carId;
+            $this->form['odometer'] = $this->defaultOdometerForCar($carId);
         }
 
         $this->showForm = true;
+    }
+
+    public function updatedFormCarId(string $carId): void
+    {
+        if ($this->editingExpenseId !== null) {
+            return;
+        }
+
+        if ($carId === '') {
+            $this->form['odometer'] = '';
+
+            return;
+        }
+
+        $this->form['odometer'] = $this->defaultOdometerForCar((int) $carId);
     }
 
     public function editExpense(int $expenseId): void
@@ -448,6 +466,29 @@ new class extends Component {
             'notes' => '',
             'tags' => '',
         ];
+    }
+
+    protected function defaultOdometerForCar(int $carId): string
+    {
+        $car = Auth::user()->cars()->whereKey($carId)->first();
+
+        if ($car === null) {
+            return '';
+        }
+
+        $candidates = collect([
+            $car->current_odometer,
+            $car->fuelLogs()->whereNotNull('odometer')->orderByDesc('log_date')->orderByDesc('id')->value('odometer'),
+            $car->expenses()->whereNotNull('odometer')->orderByDesc('expense_date')->orderByDesc('id')->value('odometer'),
+            $car->maintenanceRecords()->whereNotNull('odometer')->orderByDesc('service_date')->orderByDesc('id')->value('odometer'),
+            $car->mileageLogs()->orderByDesc('log_date')->orderByDesc('id')->value('end_odometer'),
+        ])->filter(fn ($value): bool => $value !== null);
+
+        if ($candidates->isEmpty()) {
+            return '';
+        }
+
+        return (string) (int) $candidates->max();
     }
 }; ?>
 

@@ -3,6 +3,7 @@
 use App\Models\Car;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\MileageLog;
 use App\Models\User;
 use Database\Seeders\ExpenseCategorySeeder;
 use Illuminate\Http\UploadedFile;
@@ -155,4 +156,48 @@ test('user can update and delete their expense', function () {
         'source_type' => 'expense',
         'source_id' => $expense->id,
     ]);
+});
+
+test('new expense defaults odometer from latest known car reading', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'current_odometer' => 12000,
+        'is_default' => true,
+    ]);
+    $category = ExpenseCategory::factory()->create();
+
+    MileageLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'log_date' => now()->subDay()->toDateString(),
+        'start_odometer' => 12100,
+        'end_odometer' => 12345,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::expenses.index')
+        ->call('startCreating')
+        ->assertSet('form.car_id', (string) $car->id)
+        ->assertSet('form.odometer', '12345')
+        ->set('form.expense_category_id', (string) $category->id);
+});
+
+test('changing car while creating expense refreshes the default odometer', function () {
+    $user = User::factory()->create();
+    $firstCar = Car::factory()->for($user)->create([
+        'current_odometer' => 15000,
+        'is_default' => true,
+    ]);
+    $secondCar = Car::factory()->for($user)->create([
+        'current_odometer' => 22000,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::expenses.index')
+        ->call('startCreating')
+        ->assertSet('form.car_id', (string) $firstCar->id)
+        ->assertSet('form.odometer', '15000')
+        ->set('form.car_id', (string) $secondCar->id)
+        ->assertSet('form.odometer', '22000');
 });
