@@ -185,10 +185,14 @@ test('new expense defaults odometer from latest known car reading', function () 
 test('changing car while creating expense refreshes the default odometer', function () {
     $user = User::factory()->create();
     $firstCar = Car::factory()->for($user)->create([
+        'make' => 'Audi',
+        'model' => 'A4',
         'current_odometer' => 15000,
         'is_default' => true,
     ]);
     $secondCar = Car::factory()->for($user)->create([
+        'make' => 'Volvo',
+        'model' => 'V60',
         'current_odometer' => 22000,
     ]);
 

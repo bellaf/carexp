@@ -13,6 +13,7 @@ use App\Models\QuickAction;
 use App\Models\RecurringTransaction;
 use App\Models\VehicleObligation;
 use App\Support\ExpenseAccountResolver;
+use App\Support\LatestOdometerResolver;
 use App\Support\OwnershipCostMetrics;
 use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
@@ -498,7 +499,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'ledger_entry_id' => null,
                     'amount' => $amountToPost,
                     'expense_date' => now()->toDateString(),
-                    'odometer' => $car->current_odometer,
+                    'odometer' => app(LatestOdometerResolver::class)->forCar($car),
                     'vendor' => $quickAction->vendor,
                     'notes' => $quickAction->notes,
                     'tags' => $quickAction->tags,

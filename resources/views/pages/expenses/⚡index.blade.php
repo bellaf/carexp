@@ -9,6 +9,7 @@ use App\Models\Car;
 use App\Support\AttachmentManager;
 use App\Support\CurrencyFormatter;
 use App\Support\ExpenseAccountResolver;
+use App\Support\LatestOdometerResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -476,19 +477,13 @@ new class extends Component {
             return '';
         }
 
-        $candidates = collect([
-            $car->current_odometer,
-            $car->fuelLogs()->whereNotNull('odometer')->orderByDesc('log_date')->orderByDesc('id')->value('odometer'),
-            $car->expenses()->whereNotNull('odometer')->orderByDesc('expense_date')->orderByDesc('id')->value('odometer'),
-            $car->maintenanceRecords()->whereNotNull('odometer')->orderByDesc('service_date')->orderByDesc('id')->value('odometer'),
-            $car->mileageLogs()->orderByDesc('log_date')->orderByDesc('id')->value('end_odometer'),
-        ])->filter(fn ($value): bool => $value !== null);
+        $odometer = app(LatestOdometerResolver::class)->forCar($car);
 
-        if ($candidates->isEmpty()) {
+        if ($odometer === null) {
             return '';
         }
 
-        return (string) (int) $candidates->max();
+        return (string) $odometer;
     }
 }; ?>
 

@@ -3,6 +3,7 @@
 use App\Models\Account;
 use App\Models\ExpenseCategory;
 use App\Models\FuelLog;
+use App\Models\MileageLog;
 use App\Models\QuickAction;
 use App\Models\User;
 use Livewire\Livewire;
@@ -123,6 +124,13 @@ test('dashboard quick action button posts expense and ledger entry', function ()
     ]);
     $category = ExpenseCategory::factory()->create(['key' => 'tolls', 'name' => 'Tolls']);
 
+    MileageLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'log_date' => now()->subDay()->toDateString(),
+        'start_odometer' => 35100,
+        'end_odometer' => 35225,
+    ]);
+
     $quickAction = QuickAction::factory()->for($user)->create([
         'car_id' => $car->id,
         'expense_category_id' => $category->id,
@@ -149,6 +157,7 @@ test('dashboard quick action button posts expense and ledger entry', function ()
         'car_id' => $car->id,
         'expense_category_id' => $category->id,
         'amount' => '2.50',
+        'odometer' => 35225,
         'vendor' => 'Dartford Crossing',
     ]);
 
