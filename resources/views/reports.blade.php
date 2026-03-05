@@ -51,11 +51,7 @@
         </flux:card>
 
         @if ($selectedReport === 'summary')
-            <div class="grid gap-4 md:grid-cols-4">
-                <flux:card class="space-y-3">
-                    <flux:text>{{ __('Transactions') }}</flux:text>
-                    <flux:heading>{{ $summary['transaction_count'] }}</flux:heading>
-                </flux:card>
+            <div class="grid gap-4 md:grid-cols-3">
                 <flux:card class="space-y-3">
                     <flux:text>{{ __('Expenses') }}</flux:text>
                     <flux:heading class="text-rose-600 dark:text-rose-400">{{ $summary['expense_total'] }}</flux:heading>
@@ -147,8 +143,11 @@
                     <flux:text>{{ __('No data found for this period.') }}</flux:text>
                 @else
                     <div class="space-y-3 md:hidden">
-                        @foreach ($categoryRows as $row)
-                            <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                @foreach ($categoryRows as $row)
+                                    @php
+                                        $isNetCostNegative = (float) $row['net_cost_value'] < 0;
+                                    @endphp
+                                    <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
                                 <div class="mb-3 font-medium">{{ $row['category'] }}</div>
                                 <dl class="grid grid-cols-2 gap-3 text-sm">
                                     <div>
@@ -161,7 +160,7 @@
                                     </div>
                                     <div class="col-span-2">
                                         <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Net Cost') }}</dt>
-                                        <dd>{{ $row['net_cost'] }}</dd>
+                                        <dd class="{{ $isNetCostNegative ? 'text-emerald-700 dark:text-emerald-400' : '' }}">{{ $row['net_cost'] }}</dd>
                                     </div>
                                 </dl>
                             </div>
@@ -180,11 +179,14 @@
                             </thead>
                             <tbody>
                                 @foreach ($categoryRows as $row)
+                                    @php
+                                        $isNetCostNegative = (float) $row['net_cost_value'] < 0;
+                                    @endphp
                                     <tr class="border-t border-zinc-200 dark:border-zinc-700">
                                         <td class="px-3 py-2">{{ $row['category'] }}</td>
                                         <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ $row['expense_total'] }}</td>
                                         <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ $row['income_total'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['net_cost'] }}</td>
+                                        <td class="px-3 py-2 text-right {{ $isNetCostNegative ? 'text-emerald-700 dark:text-emerald-400' : '' }}">{{ $row['net_cost'] }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -195,31 +197,13 @@
         @endif
 
         @if ($selectedReport === 'fuel')
-            <div class="grid gap-4 md:grid-cols-4">
-                <flux:card class="space-y-3">
-                    <flux:text>{{ __('Fill-Ups') }}</flux:text>
-                    <flux:heading>{{ $fuelSummary['fill_count'] }}</flux:heading>
-                    @if ($fuelSparklines['fill_count'] !== null)
-                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel fill-up trend sparkline') }}">
-                            <polyline points="{{ $fuelSparklines['fill_count']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-sky-500 dark:text-sky-400" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                    @endif
-                </flux:card>
+            <div class="grid gap-4 md:grid-cols-2">
                 <flux:card class="space-y-3">
                     <flux:text>{{ __('Fuel Spend') }}</flux:text>
                     <flux:heading>{{ $fuelSummary['total_spend'] }}</flux:heading>
                     @if ($fuelSparklines['spend'] !== null)
                         <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel spend trend sparkline') }}">
                             <polyline points="{{ $fuelSparklines['spend']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-rose-500 dark:text-rose-400" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                    @endif
-                </flux:card>
-                <flux:card class="space-y-3">
-                    <flux:text>{{ __('Volume') }}</flux:text>
-                    <flux:heading>{{ $fuelSummary['total_volume'] }} {{ $volumeLabel }}</flux:heading>
-                    @if ($fuelSparklines['volume'] !== null)
-                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel volume trend sparkline') }}">
-                            <polyline points="{{ $fuelSparklines['volume']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-amber-500 dark:text-amber-400" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     @endif
                 </flux:card>
@@ -274,7 +258,6 @@
                                     <th class="px-3 py-2 font-medium">{{ __('Month') }}</th>
                                     <th class="px-3 py-2 text-right font-medium">{{ __('Fill-Ups') }}</th>
                                     <th class="px-3 py-2 text-right font-medium">{{ __('Spend') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Volume') }}</th>
                                     <th class="px-3 py-2 text-right font-medium">{{ __('Avg Efficiency') }}</th>
                                 </tr>
                             </thead>
@@ -284,7 +267,6 @@
                                         <td class="px-3 py-2">{{ $row['month'] }}</td>
                                         <td class="px-3 py-2 text-right">{{ $row['fill_count'] }}</td>
                                         <td class="px-3 py-2 text-right">{{ $row['total_spend'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['total_volume'] }} {{ $volumeLabel }}</td>
                                         <td class="px-3 py-2 text-right">{{ $row['average_efficiency'] }} {{ $efficiencyLabel }}</td>
                                     </tr>
                                 @endforeach
@@ -415,95 +397,87 @@
                 @if ($ownershipRows->isEmpty())
                     <flux:text>{{ __('No ownership data is available yet.') }}</flux:text>
                 @else
-                    <div class="space-y-3 md:hidden">
+                    <div class="space-y-4">
                         @foreach ($ownershipRows as $row)
-                            <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
-                                <div class="mb-3 font-medium">{{ $row['car'] }}</div>
-                                <dl class="grid grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Status') }}</dt>
-                                        <dd>{{ $row['status'] }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Distance') }}</dt>
-                                        <dd>{{ $row['distance'] }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Purchase Price') }}</dt>
-                                        <dd>{{ $row['purchase_price'] }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Sale Price') }}</dt>
-                                        <dd>{{ $row['sale_price'] }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Net Cost') }}</dt>
-                                        <dd>{{ $row['net_cost'] }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Total Ownership Cost') }}</dt>
-                                        <dd>{{ $row['total_ownership_cost'] }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Net Cost / Distance') }}</dt>
-                                        <dd>{{ $row['net_cost_per_distance'] }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Fuel Cost / Distance') }}</dt>
-                                        <dd>{{ $row['fuel_cost_per_distance'] }}</dd>
-                                    </div>
-                                    <div class="col-span-2">
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Maintenance Cost / Distance') }}</dt>
-                                        <dd>{{ $row['maintenance_cost_per_distance'] }}</dd>
-                                    </div>
-                                    <div class="col-span-2">
-                                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Total Ownership Cost / Distance') }}</dt>
-                                        <dd>{{ $row['total_ownership_cost_per_distance'] }}</dd>
-                                    </div>
-                                </dl>
-                            </div>
-                        @endforeach
-                    </div>
+                            @php
+                                $status = strtolower(trim((string) ($row['status'] ?? '')));
+                                $statusClasses = match ($status) {
+                                    'active' => 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300',
+                                    'sold' => 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300',
+                                    'inactive' => 'border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+                                    default => 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300',
+                                };
 
-                    <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
-                        <table class="w-full text-left text-sm tabular-nums">
-                            <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                                <tr>
-                                    <th class="px-3 py-2 font-medium">{{ __('Car') }}</th>
-                                    <th class="px-3 py-2 font-medium">{{ __('Status') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Distance') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Purchase Price') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Sale Price') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Expenses') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Reimbursements') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Net Cost') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Total Ownership Cost') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Net Cost / Distance') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Fuel Cost / Distance') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Maintenance Cost / Distance') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Total Ownership Cost / Distance') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($ownershipRows as $row)
-                                    <tr class="border-t border-zinc-200 dark:border-zinc-700">
-                                        <td class="px-3 py-2">{{ $row['car'] }}</td>
-                                        <td class="px-3 py-2">{{ $row['status'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['distance'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['purchase_price'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['sale_price'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['expense_total'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['income_total'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['net_cost'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['total_ownership_cost'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['net_cost_per_distance'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['fuel_cost_per_distance'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['maintenance_cost_per_distance'] }}</td>
-                                        <td class="px-3 py-2 text-right">{{ $row['total_ownership_cost_per_distance'] }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                $netCostNegative = str_contains((string) ($row['net_cost'] ?? ''), '-');
+                                $netCostPositive = str_contains((string) ($row['net_cost'] ?? ''), '+');
+                                $netCostClasses = $netCostNegative
+                                    ? 'text-emerald-700 dark:text-emerald-300'
+                                    : ($netCostPositive ? 'text-rose-700 dark:text-rose-300' : 'text-zinc-900 dark:text-zinc-100');
+                            @endphp
+                            <flux:card class="space-y-4 border-l-4 {{ $statusClasses }}">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <div class="font-medium">{{ $row['car'] }}</div>
+                                        <div>
+                                            <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-medium border-current/20 bg-current/10 {{ str_replace('text-zinc-700 dark:text-zinc-300', '', (string) $statusClasses) }}">
+                                                {{ $row['status'] }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <flux:heading class="{{ $netCostClasses }}">{{ __('Net Cost') }}: {{ $row['net_cost'] }}</flux:heading>
+                                </div>
+
+                                <div class="grid gap-3 md:grid-cols-3">
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Distance') }}</div>
+                                        <div class="mt-0.5 text-sky-700 dark:text-sky-300">{{ $row['distance'] }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Purchase Price') }}</div>
+                                        <div class="mt-0.5 text-rose-700 dark:text-rose-300">{{ $row['purchase_price'] }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Sale Price') }}</div>
+                                        <div class="mt-0.5 text-amber-700 dark:text-amber-300">{{ $row['sale_price'] }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="grid gap-3 md:grid-cols-3">
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Expenses') }}</div>
+                                        <div class="mt-0.5 text-rose-700 dark:text-rose-300">{{ $row['expense_total'] }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Reimbursements') }}</div>
+                                        <div class="mt-0.5 text-emerald-700 dark:text-emerald-300">{{ $row['income_total'] }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Total Ownership Cost') }}</div>
+                                        <div class="mt-0.5 text-zinc-900 dark:text-zinc-100">{{ $row['total_ownership_cost'] }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="grid gap-3 md:grid-cols-3">
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Net Cost / Distance') }}</div>
+                                        <div class="mt-0.5 {{ $netCostClasses }}">{{ $row['net_cost_per_distance'] }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Fuel Cost / Distance') }}</div>
+                                        <div class="mt-0.5 text-sky-700 dark:text-sky-300">{{ $row['fuel_cost_per_distance'] }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Maintenance Cost / Distance') }}</div>
+                                        <div class="mt-0.5 text-amber-700 dark:text-amber-300">{{ $row['maintenance_cost_per_distance'] }}</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Total Ownership Cost / Distance') }}</div>
+                                    <div class="mt-0.5 text-purple-700 dark:text-purple-300">{{ $row['total_ownership_cost_per_distance'] }}</div>
+                                </div>
+                            </flux:card>
+                        @endforeach
                     </div>
                 @endif
             </flux:card>
