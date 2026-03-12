@@ -28,6 +28,31 @@ test('authenticated users can visit the dashboard', function () {
         ->assertSee('MIT License');
 });
 
+test('dashboard quick action modal shows amount and fuel volume units from preferences', function () {
+    $user = User::factory()->create([
+        'preferred_currency' => 'GBP',
+        'volume_unit' => 'litres',
+    ]);
+    $car = Car::factory()->for($user)->create([
+        'is_default' => true,
+    ]);
+
+    QuickAction::factory()->for($user)->create([
+        'car_id' => $car->id,
+        'entry_target' => 'fuel_log',
+        'name' => 'Quick Fuel',
+        'amount' => 0,
+        'fuel_volume' => 0,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Enter Amount (£)')
+        ->assertSee('Enter Fuel Volume (L)');
+});
+
 test('dashboard about section hides the version when app version is unset', function () {
     $user = User::factory()->create();
     config(['app.version' => null]);

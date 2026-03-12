@@ -19,6 +19,7 @@ test('authenticated users can view fuel logs page', function () {
         ->get(route('fuel.index'))
         ->assertOk()
         ->assertSee('Fuel Logs')
+        ->assertSee('Total Cost (£)')
         ->assertSee('Tap any fuel entry to edit it.');
 });
 

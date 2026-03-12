@@ -548,7 +548,7 @@
                             </div>
                             <div x-show="selectedQuickAction?.requires_amount" x-cloak>
                                 <flux:input
-                                    :label="__('Enter Amount')"
+                                    :label="__('Enter Amount') . ' (' . \App\Support\CurrencyFormatter::symbol($currencyCode) . ')'"
                                     type="number"
                                     name="amount"
                                     min="0.01"
@@ -559,7 +559,7 @@
                             </div>
                             <div x-show="selectedQuickAction?.requires_fuel_volume" x-cloak>
                                 <flux:input
-                                    :label="__('Enter Fuel Volume')"
+                                    :label="__('Enter Fuel Volume') . ' (' . (auth()->user()->volume_unit === 'litres' ? 'L' : 'gal') . ')'"
                                     type="number"
                                     name="fuel_volume"
                                     min="0.001"
