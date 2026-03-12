@@ -222,6 +222,7 @@ new class extends Component {
             ->with(['car', 'ledgerEntry'])
             ->when($periodStartDate !== null, fn ($query) => $query->whereDate('log_date', '>=', $periodStartDate))
             ->when($periodEndDate !== null, fn ($query) => $query->whereDate('log_date', '<=', $periodEndDate))
+            ->orderByDesc('odometer')
             ->orderByDesc('log_date')
             ->orderByDesc('id')
             ->get();

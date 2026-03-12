@@ -370,3 +370,41 @@ test('fuel log page shows weighted average efficiency across full tank intervals
         ->assertSee('40.000')
         ->assertDontSee('35.000');
 });
+
+test('fuel logs page orders entries by odometer so displayed efficiency matches the previous row', function () {
+    $user = User::factory()->create([
+        'measurement_system' => 'imperial',
+        'volume_unit' => 'gallons',
+    ]);
+    $car = Car::factory()->for($user)->create();
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'log_date' => '2026-03-03',
+        'odometer' => 10000,
+        'volume' => 8,
+        'volume_unit' => 'gallons',
+        'full_tank' => true,
+        'calculated_efficiency' => null,
+    ]);
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'log_date' => '2026-03-01',
+        'odometer' => 10200,
+        'volume' => 10,
+        'volume_unit' => 'gallons',
+        'full_tank' => true,
+        'calculated_efficiency' => 20,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('fuel.index'))
+        ->assertOk()
+        ->assertSeeInOrder([
+            '10,200',
+            '20.000',
+            '10,000',
+            'N/A',
+        ]);
+});
