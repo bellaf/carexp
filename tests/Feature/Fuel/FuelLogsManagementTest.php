@@ -68,6 +68,32 @@ test('user can create fuel log with auto calculated values and linked ledger ent
     ]);
 });
 
+test('fuel log full tank value is normalized from string input', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.log_date', now()->format('Y-m-d'))
+        ->set('form.odometer', '10300')
+        ->set('form.volume', '10.000')
+        ->set('form.total_cost', '45.00')
+        ->set('form.price_per_unit', '')
+        ->set('form.full_tank', 'true')
+        ->call('saveFuelLog')
+        ->assertHasNoErrors();
+
+    $fuelLog = FuelLog::query()
+        ->where('user_id', $user->id)
+        ->where('odometer', 10300)
+        ->firstOrFail();
+
+    expect((bool) $fuelLog->full_tank)->toBeTrue();
+});
+
 test('new fuel log defaults odometer from latest known car reading', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create([

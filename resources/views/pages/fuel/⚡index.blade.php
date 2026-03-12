@@ -59,6 +59,11 @@ new class extends Component {
         $this->form['odometer'] = $this->defaultOdometerForCar((int) $carId);
     }
 
+    public function updatedFormFullTank(mixed $value): void
+    {
+        $this->form['full_tank'] = $this->normalizeBooleanValue($value);
+    }
+
     public function editFuelLog(int $fuelLogId): void
     {
         $fuelLog = Auth::user()->fuelLogs()->with('ledgerEntry')->findOrFail($fuelLogId);
@@ -296,7 +301,7 @@ new class extends Component {
                 'volume' => (float) $form['volume'],
                 'volume_unit' => $volumeUnit,
                 'price_per_unit' => $pricePerUnit,
-                'full_tank' => (bool) $form['full_tank'],
+                'full_tank' => $this->normalizeBooleanValue($form['full_tank'] ?? false),
                 'calculated_efficiency' => null,
             ],
             'amount' => $amount,
@@ -432,6 +437,27 @@ new class extends Component {
         $odometer = app(LatestOdometerResolver::class)->forCar($car);
 
         return $odometer !== null ? (string) $odometer : '';
+    }
+
+    protected function normalizeBooleanValue(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (bool) $value;
+        }
+
+        if (is_string($value)) {
+            return match (strtolower(trim($value))) {
+                '1', 'true', 'on', 'yes' => true,
+                '0', 'false', 'off', 'no', '' => false,
+                default => (bool) $value,
+            };
+        }
+
+        return (bool) $value;
     }
 }; ?>
 
