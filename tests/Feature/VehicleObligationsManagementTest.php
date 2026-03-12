@@ -185,3 +185,15 @@ test('obligations page shows docs attached hint for rows with attachments', func
         ->assertOk()
         ->assertSee('Docs attached');
 });
+
+test('obligation form shows actionable message when attachment upload fails before validation', function () {
+    $user = User::factory()->create();
+    Car::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::obligations.index')
+        ->call('startCreating')
+        ->call('_uploadErrored', 'newAttachments', null, true)
+        ->assertSee('One or more attachments failed to upload before validation. This usually means the file exceeds the server upload limit. Try a smaller file or ask the server admin to increase PHP upload_max_filesize and post_max_size.');
+});

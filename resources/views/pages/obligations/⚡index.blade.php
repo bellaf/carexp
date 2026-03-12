@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\FormatsAttachmentUploadErrors;
 use App\Models\Account;
 use App\Models\Attachment;
 use App\Models\LedgerEntry;
@@ -17,6 +18,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 new class extends Component {
+    use FormatsAttachmentUploadErrors;
     use WithFileUploads;
 
     public bool $showForm = false;
@@ -540,7 +542,7 @@ new class extends Component {
 
                             @if ($errors->has('newAttachments') || $errors->has('newAttachments.*'))
                                 <div class="space-y-1">
-                                    @foreach (collect($errors->get('newAttachments'))->merge($errors->get('newAttachments.*'))->flatten()->unique()->values() as $attachmentError)
+                                    @foreach ($this->attachmentUploadErrorMessages() as $attachmentError)
                                         <flux:text class="text-sm text-rose-600 dark:text-rose-400">{{ $attachmentError }}</flux:text>
                                     @endforeach
                                 </div>

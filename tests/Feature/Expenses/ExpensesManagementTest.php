@@ -130,6 +130,20 @@ test('expenses page shows docs attached hint for rows with attachments', functio
         ->assertSee('Docs attached');
 });
 
+test('expense form shows actionable message when attachment upload fails before validation', function () {
+    $user = User::factory()->create();
+    Car::factory()->for($user)->create();
+    $category = ExpenseCategory::factory()->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::expenses.index')
+        ->call('startCreating')
+        ->set('form.expense_category_id', (string) $category->id)
+        ->call('_uploadErrored', 'newAttachments', null, true)
+        ->assertSee('One or more attachments failed to upload before validation. This usually means the file exceeds the server upload limit. Try a smaller file or ask the server admin to increase PHP upload_max_filesize and post_max_size.');
+});
+
 test('user can update and delete their expense', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();

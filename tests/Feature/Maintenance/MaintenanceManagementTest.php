@@ -187,6 +187,18 @@ test('maintenance edit form explains that selected attachments are only saved af
         ->assertSeeHtml('wire:target="newAttachments"');
 });
 
+test('maintenance form shows actionable message when attachment upload fails before validation', function () {
+    $user = User::factory()->create();
+    Car::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::maintenance.index')
+        ->call('startCreating')
+        ->call('_uploadErrored', 'newAttachments', null, true)
+        ->assertSee('One or more attachments failed to upload before validation. This usually means the file exceeds the server upload limit. Try a smaller file or ask the server admin to increase PHP upload_max_filesize and post_max_size.');
+});
+
 test('maintenance page shows attachment links for rows with attachments', function () {
     Storage::fake('local');
 
