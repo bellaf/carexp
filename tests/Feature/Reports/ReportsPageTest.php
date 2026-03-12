@@ -81,12 +81,32 @@ test('category report groups ledger entries by account', function () {
         'source_type' => 'expense',
     ]);
 
+    $reimbursementAccount = Account::factory()->create([
+        'key' => 'parking_reimbursement_income',
+        'name' => 'Parking Reimbursement',
+        'group' => 'income',
+        'is_system' => true,
+    ]);
+
+    LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $reimbursementAccount->id,
+        'entry_type' => 'income',
+        'amount' => 2.5,
+        'entry_date' => now()->startOfMonth()->addDays(2)->toDateString(),
+        'source_type' => 'reimbursement',
+    ]);
+
     $this->actingAs($user)
         ->get(route('reports.index', ['report' => 'category', 'period' => 'this_month']))
         ->assertOk()
         ->assertSee('Category Breakdown')
         ->assertSee('Parking')
-        ->assertSee('12.50');
+        ->assertSee('Parking Reimbursement')
+        ->assertSee('Total')
+        ->assertSee('12.50')
+        ->assertSee('2.50')
+        ->assertSee('10.00');
 });
 
 test('fuel report shows fuel metrics from fuel logs', function () {

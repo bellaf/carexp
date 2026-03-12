@@ -185,6 +185,8 @@ class ReportsController extends Controller
                     'expense_total' => CurrencyFormatter::format($expenseTotal, $currencyCode),
                     'income_total' => CurrencyFormatter::format($incomeTotal, $currencyCode),
                     'net_cost' => CurrencyFormatter::format($netCost, $currencyCode),
+                    'expense_total_value' => $expenseTotal,
+                    'income_total_value' => $incomeTotal,
                     'net_cost_value' => $netCost,
                     'sort_total' => $expenseTotal + $incomeTotal,
                 ];

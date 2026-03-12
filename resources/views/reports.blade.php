@@ -142,12 +142,18 @@
                 @if ($categoryRows->isEmpty())
                     <flux:text>{{ __('No data found for this period.') }}</flux:text>
                 @else
+                    @php
+                        $categoryExpenseTotal = (float) $categoryRows->sum('expense_total_value');
+                        $categoryIncomeTotal = (float) $categoryRows->sum('income_total_value');
+                        $categoryNetTotal = (float) $categoryRows->sum('net_cost_value');
+                        $isCategoryNetTotalNegative = $categoryNetTotal < 0;
+                    @endphp
                     <div class="space-y-3 md:hidden">
-                                @foreach ($categoryRows as $row)
-                                    @php
-                                        $isNetCostNegative = (float) $row['net_cost_value'] < 0;
-                                    @endphp
-                                    <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                        @foreach ($categoryRows as $row)
+                            @php
+                                $isNetCostNegative = (float) $row['net_cost_value'] < 0;
+                            @endphp
+                            <div class="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
                                 <div class="mb-3 font-medium">{{ $row['category'] }}</div>
                                 <dl class="grid grid-cols-2 gap-3 text-sm">
                                     <div>
@@ -165,6 +171,24 @@
                                 </dl>
                             </div>
                         @endforeach
+
+                        <div class="rounded-xl border border-zinc-300 bg-zinc-100/80 p-4 dark:border-zinc-600 dark:bg-zinc-900/70">
+                            <div class="mb-3 font-semibold">{{ __('Total') }}</div>
+                            <dl class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Expenses') }}</dt>
+                                    <dd class="text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($categoryExpenseTotal, $currencyCode) }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Reimbursements') }}</dt>
+                                    <dd class="text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($categoryIncomeTotal, $currencyCode) }}</dd>
+                                </div>
+                                <div class="col-span-2">
+                                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Net Cost') }}</dt>
+                                    <dd class="{{ $isCategoryNetTotalNegative ? 'text-emerald-700 dark:text-emerald-400' : '' }}">{{ \App\Support\CurrencyFormatter::format($categoryNetTotal, $currencyCode) }}</dd>
+                                </div>
+                            </dl>
+                        </div>
                     </div>
 
                     <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
@@ -189,6 +213,12 @@
                                         <td class="px-3 py-2 text-right {{ $isNetCostNegative ? 'text-emerald-700 dark:text-emerald-400' : '' }}">{{ $row['net_cost'] }}</td>
                                     </tr>
                                 @endforeach
+                                <tr class="border-t-2 border-zinc-300 bg-zinc-100/80 font-semibold dark:border-zinc-600 dark:bg-zinc-900/70">
+                                    <td class="px-3 py-2">{{ __('Total') }}</td>
+                                    <td class="px-3 py-2 text-right text-rose-700 dark:text-rose-400">{{ \App\Support\CurrencyFormatter::format($categoryExpenseTotal, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">{{ \App\Support\CurrencyFormatter::format($categoryIncomeTotal, $currencyCode) }}</td>
+                                    <td class="px-3 py-2 text-right {{ $isCategoryNetTotalNegative ? 'text-emerald-700 dark:text-emerald-400' : '' }}">{{ \App\Support\CurrencyFormatter::format($categoryNetTotal, $currencyCode) }}</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
