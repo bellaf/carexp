@@ -490,7 +490,7 @@ new class extends Component {
 
                         @if ($errors->has('newAttachments') || $errors->has('newAttachments.*'))
                             <div class="space-y-1">
-                                @foreach (array_unique(array_merge($errors->get('newAttachments'), $errors->get('newAttachments.*'))) as $attachmentError)
+                                @foreach (collect($errors->get('newAttachments'))->merge($errors->get('newAttachments.*'))->flatten()->unique()->values() as $attachmentError)
                                     <flux:text class="text-sm text-rose-600 dark:text-rose-400">{{ $attachmentError }}</flux:text>
                                 @endforeach
                             </div>
