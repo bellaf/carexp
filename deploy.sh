@@ -22,10 +22,8 @@ fi
 
 php artisan migrate --force
 php artisan optimize:clear
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
 php artisan optimize
+php artisan queue:restart
 
 mkdir -p storage/app/backups storage/app/backup-temp bootstrap/cache
 
