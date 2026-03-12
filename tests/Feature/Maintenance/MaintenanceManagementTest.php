@@ -4,6 +4,7 @@ use App\Models\Account;
 use App\Models\Car;
 use App\Models\MaintenanceRecord;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -61,6 +62,34 @@ test('user can create maintenance record', function () {
     ]);
 });
 
+test('user can create maintenance record with attachment', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::maintenance.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.service_type_option', 'oil_change')
+        ->set('form.service_date', now()->format('Y-m-d'))
+        ->set('form.cost', '95.50')
+        ->set('newAttachments', [UploadedFile::fake()->image('invoice.jpg')])
+        ->call('saveRecord')
+        ->assertHasNoErrors();
+
+    $record = MaintenanceRecord::query()
+        ->where('user_id', $user->id)
+        ->where('car_id', $car->id)
+        ->where('service_type', 'oil_change')
+        ->firstOrFail();
+
+    expect($record->attachments)->toHaveCount(1);
+    Storage::disk('local')->assertExists($record->attachments->first()->path);
+});
+
 test('user can update and delete maintenance record', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
@@ -85,7 +114,7 @@ test('user can update and delete maintenance record', function () {
     $this->assertDatabaseMissing('maintenance_records', ['id' => $record->id]);
 });
 
-test('maintenance page shows docs attached hint for rows with attachments', function () {
+test('maintenance page shows attachment links for rows with attachments', function () {
     Storage::fake('local');
 
     $user = User::factory()->create();
@@ -107,7 +136,9 @@ test('maintenance page shows docs attached hint for rows with attachments', func
     $this->actingAs($user)
         ->get(route('maintenance.index'))
         ->assertOk()
-        ->assertSee('Docs attached');
+        ->assertSee('Docs attached')
+        ->assertSee('1 attachment')
+        ->assertSee('invoice.pdf');
 });
 
 test('user can save custom service type via other option', function () {

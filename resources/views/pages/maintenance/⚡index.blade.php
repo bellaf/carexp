@@ -600,6 +600,28 @@ new class extends Component {
                     @if ($record->notes)
                         <flux:text>{{ $record->notes }}</flux:text>
                     @endif
+
+                    @if ($record->attachments->isNotEmpty())
+                        <div class="space-y-2 rounded-xl border border-sky-200 bg-sky-50/70 p-3 dark:border-sky-900/60 dark:bg-sky-950/20">
+                            <flux:text class="text-xs font-medium uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                                {{ trans_choice('{1} 1 attachment|[2,*] :count attachments', $record->attachments->count(), ['count' => $record->attachments->count()]) }}
+                            </flux:text>
+
+                            <div class="flex flex-wrap gap-2">
+                                @foreach ($record->attachments as $attachment)
+                                    <a
+                                        href="{{ route('attachments.show', $attachment) }}"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onclick="event.stopPropagation()"
+                                        class="inline-flex max-w-full items-center gap-2 rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-sm font-medium text-sky-800 transition hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-100 dark:hover:bg-sky-950/50"
+                                    >
+                                        <span class="truncate">{{ $attachment->original_name }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </flux:card>
             @endforeach
         </div>
