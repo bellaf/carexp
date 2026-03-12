@@ -118,6 +118,34 @@ test('user can create maintenance record with heic attachment', function () {
     Storage::disk('local')->assertExists($record->attachments->first()->path);
 });
 
+test('user can create maintenance record with iphone image reported as octet stream', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::maintenance.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.service_type_option', 'oil_change')
+        ->set('form.service_date', now()->format('Y-m-d'))
+        ->set('form.cost', '95.50')
+        ->set('newAttachments', [UploadedFile::fake()->create('image.heic', 50, 'application/octet-stream')])
+        ->call('saveRecord')
+        ->assertHasNoErrors();
+
+    $record = MaintenanceRecord::query()
+        ->where('user_id', $user->id)
+        ->where('car_id', $car->id)
+        ->where('service_type', 'oil_change')
+        ->firstOrFail();
+
+    expect($record->attachments)->toHaveCount(1);
+    Storage::disk('local')->assertExists($record->attachments->first()->path);
+});
+
 test('user can update and delete maintenance record', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
@@ -140,6 +168,23 @@ test('user can update and delete maintenance record', function () {
         ->assertHasNoErrors();
 
     $this->assertDatabaseMissing('maintenance_records', ['id' => $record->id]);
+});
+
+test('maintenance edit form explains that selected attachments are only saved after saving the record', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    $record = MaintenanceRecord::factory()->for($car)->create([
+        'user_id' => $user->id,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::maintenance.index')
+        ->call('editRecord', $record->id)
+        ->assertSee('No saved attachments yet. Any selected files will be attached after you press Save Record.')
+        ->assertSeeHtml('wire:loading.attr="disabled"')
+        ->assertSeeHtml('wire:target="newAttachments"');
 });
 
 test('maintenance page shows attachment links for rows with attachments', function () {

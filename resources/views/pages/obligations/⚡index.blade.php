@@ -322,7 +322,12 @@ new class extends Component {
     {
         return [
             'newAttachments' => ['nullable', 'array'],
-            'newAttachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf,heic,heif', 'max:10240'],
+            'newAttachments.*' => [
+                'file',
+                'extensions:jpg,jpeg,png,pdf,heic,heif',
+                'mimetypes:image/jpeg,image/png,image/heic,image/heif,application/pdf,application/octet-stream',
+                'max:10240',
+            ],
         ];
     }
 
@@ -332,7 +337,8 @@ new class extends Component {
     protected function attachmentMessages(): array
     {
         return [
-            'newAttachments.*.mimes' => 'Attachments must be JPG, PNG, HEIC, HEIF, or PDF files.',
+            'newAttachments.*.extensions' => 'Attachments must be JPG, PNG, HEIC, HEIF, or PDF files.',
+            'newAttachments.*.mimetypes' => 'Attachments must be JPG, PNG, HEIC, HEIF, or PDF files.',
             'newAttachments.*.max' => 'Attachments must be 10MB or smaller.',
         ];
     }
@@ -532,6 +538,14 @@ new class extends Component {
                                 {{ __('Uploading selected files...') }}
                             </div>
 
+                            @if ($errors->has('newAttachments') || $errors->has('newAttachments.*'))
+                                <div class="space-y-1">
+                                    @foreach (array_unique(array_merge($errors->get('newAttachments'), $errors->get('newAttachments.*'))) as $attachmentError)
+                                        <flux:text class="text-sm text-rose-600 dark:text-rose-400">{{ $attachmentError }}</flux:text>
+                                    @endforeach
+                                </div>
+                            @endif
+
                             @if ($newAttachments !== [])
                                 <div class="space-y-2">
                                     @foreach ($newAttachments as $upload)
@@ -545,7 +559,7 @@ new class extends Component {
 
                             @if ($editingObligationId !== null)
                                 @if ($this->editingAttachments->isEmpty())
-                                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No saved attachments yet.') }}</flux:text>
+                                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No saved attachments yet. Any selected files will be attached after you press Save Obligation.') }}</flux:text>
                                 @else
                                     <div class="space-y-2">
                                         @foreach ($this->editingAttachments as $attachment)
@@ -591,7 +605,10 @@ new class extends Component {
 
                     <div class="flex items-center justify-between gap-3 pt-2">
                         <div class="flex items-center gap-3">
-                            <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="newAttachments">
+                                <span wire:loading.remove wire:target="newAttachments">{{ __('Save') }}</span>
+                                <span wire:loading wire:target="newAttachments">{{ __('Upload in progress...') }}</span>
+                            </flux:button>
                         </div>
 
                         @if ($editingObligationId)
