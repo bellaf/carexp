@@ -599,8 +599,6 @@ new class extends Component {
                                 <flux:badge color="red">{{ __('Overdue') }}</flux:badge>
                             @elseif ($status === 'due_soon')
                                 <flux:badge color="yellow">{{ __('Due Soon') }}</flux:badge>
-                            @else
-                                <flux:badge>{{ __('Upcoming') }}</flux:badge>
                             @endif
                         </div>
                     </div>

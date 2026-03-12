@@ -226,6 +226,23 @@ test('maintenance page shows attachment links for rows with attachments', functi
         ->assertSee('invoice.pdf');
 });
 
+test('maintenance page does not show upcoming badge for records due beyond reminder window', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    MaintenanceRecord::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'service_type' => 'Oil Change',
+        'service_date' => now()->subDay()->toDateString(),
+        'next_due_date' => now()->addMonths(5)->toDateString(),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('maintenance.index'))
+        ->assertOk()
+        ->assertDontSee('Upcoming');
+});
+
 test('user can save custom service type via other option', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
