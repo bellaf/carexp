@@ -90,6 +90,34 @@ test('user can create maintenance record with attachment', function () {
     Storage::disk('local')->assertExists($record->attachments->first()->path);
 });
 
+test('user can create maintenance record with heic attachment', function () {
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::maintenance.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.service_type_option', 'oil_change')
+        ->set('form.service_date', now()->format('Y-m-d'))
+        ->set('form.cost', '95.50')
+        ->set('newAttachments', [UploadedFile::fake()->create('invoice.heic', 50, 'image/heic')])
+        ->call('saveRecord')
+        ->assertHasNoErrors();
+
+    $record = MaintenanceRecord::query()
+        ->where('user_id', $user->id)
+        ->where('car_id', $car->id)
+        ->where('service_type', 'oil_change')
+        ->firstOrFail();
+
+    expect($record->attachments)->toHaveCount(1);
+    Storage::disk('local')->assertExists($record->attachments->first()->path);
+});
+
 test('user can update and delete maintenance record', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();

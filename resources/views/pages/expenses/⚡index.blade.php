@@ -386,7 +386,7 @@ new class extends Component {
     {
         return [
             'newAttachments' => ['nullable', 'array'],
-            'newAttachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'newAttachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf,heic,heif', 'max:10240'],
         ];
     }
 
@@ -396,7 +396,7 @@ new class extends Component {
     protected function attachmentMessages(): array
     {
         return [
-            'newAttachments.*.mimes' => 'Attachments must be JPG, PNG, or PDF files.',
+            'newAttachments.*.mimes' => 'Attachments must be JPG, PNG, HEIC, HEIF, or PDF files.',
             'newAttachments.*.max' => 'Attachments must be 10MB or smaller.',
         ];
     }
@@ -648,7 +648,7 @@ new class extends Component {
                         <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Add receipt photos or PDFs.') }}</flux:text>
                     </div>
 
-                    <flux:input wire:model="newAttachments" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" />
+                    <flux:input wire:model="newAttachments" type="file" multiple accept=".jpg,.jpeg,.png,.heic,.heif,.pdf" />
 
                     <div class="space-y-2">
                         <div wire:loading wire:target="newAttachments" class="text-sm text-zinc-500 dark:text-zinc-400">
