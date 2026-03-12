@@ -447,8 +447,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             $odometerToPost = isset($validated['odometer'])
                 ? (int) $validated['odometer']
                 : (int) (app(LatestOdometerResolver::class)->forCar($car) ?? 0);
-            $fullTankToPost = array_key_exists('full_tank', $validated)
-                ? (bool) $validated['full_tank']
+            $fullTankToPost = $request->exists('full_tank')
+                ? $request->boolean('full_tank')
                 : (bool) $quickAction->fuel_full_tank;
 
             DB::transaction(function () use ($user, $car, $quickAction, $amountToPost, $fuelVolumeToPost, $odometerToPost, $fullTankToPost): void {

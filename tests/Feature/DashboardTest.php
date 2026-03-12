@@ -295,6 +295,27 @@ test('dashboard quick action modal uses latest known odometer defaults', functio
         ->assertSee('35225');
 });
 
+test('dashboard quick action modal posts a single explicit full tank value', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'is_default' => true,
+    ]);
+
+    QuickAction::factory()->for($user)->create([
+        'car_id' => $car->id,
+        'entry_target' => 'fuel_log',
+        'name' => 'Quick Fuel',
+        'fuel_full_tank' => true,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('name="full_tank" x-bind:value="selectedQuickAction?.fuel_full_tank ? \'1\' : \'0\'"', false)
+        ->assertDontSee('type="checkbox" name="full_tank" value="1" x-model="selectedQuickAction.fuel_full_tank"', false);
+});
+
 test('dashboard period filter narrows table rows', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();

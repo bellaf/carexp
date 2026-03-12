@@ -569,9 +569,9 @@
                                 />
                             </div>
                             <div x-show="selectedQuickAction?.entry_target === 'fuel_log'" x-cloak>
-                                <input type="hidden" name="full_tank" value="0">
+                                <input type="hidden" name="full_tank" x-bind:value="selectedQuickAction?.fuel_full_tank ? '1' : '0'">
                                 <label class="inline-flex items-center gap-2 text-sm">
-                                    <input type="checkbox" name="full_tank" value="1" x-model="selectedQuickAction.fuel_full_tank">
+                                    <input type="checkbox" x-model="selectedQuickAction.fuel_full_tank">
                                     <span>{{ __('Full Tank') }}</span>
                                 </label>
                             </div>
