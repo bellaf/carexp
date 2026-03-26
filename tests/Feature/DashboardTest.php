@@ -287,6 +287,35 @@ test('dashboard transaction type filter narrows table rows', function () {
         ->assertDontSee('Brake Service Work');
 });
 
+test('dashboard ledger table keeps desktop rows on a single line', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+    $account = Account::factory()->create([
+        'key' => 'other_expense',
+        'name' => 'Long Running Account Name',
+        'group' => 'expense',
+        'is_system' => true,
+    ]);
+
+    LedgerEntry::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'entry_type' => 'expense',
+        'amount' => 45,
+        'entry_date' => now()->toDateString(),
+        'source_type' => 'expense',
+        'reference' => 'A long description that should yield space before the date or type columns wrap',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('table-fixed text-left text-sm tabular-nums', false)
+        ->assertSee('w-28 px-3 py-2 font-medium whitespace-nowrap', false)
+        ->assertSee('w-36 px-3 py-2 font-medium whitespace-nowrap', false)
+        ->assertSee('<div class="truncate">A long description that should yield space before the date or type columns wrap</div>', false);
+});
+
 test('dashboard quick action modal uses latest known odometer defaults', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create([

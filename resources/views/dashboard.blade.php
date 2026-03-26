@@ -820,15 +820,15 @@
                         @endforeach
                     </div>
                     <div class="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 md:block">
-                        <table class="w-full min-w-[720px] text-left text-sm tabular-nums">
+                        <table class="w-full min-w-[720px] table-fixed text-left text-sm tabular-nums">
                             <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                                 <tr>
-                                    <th class="px-3 py-2 font-medium">{{ __('Date') }}</th>
-                                    <th class="px-3 py-2 font-medium">{{ __('Type') }}</th>
-                                    <th class="px-3 py-2 font-medium">{{ __('Account') }}</th>
+                                    <th class="w-28 px-3 py-2 font-medium whitespace-nowrap">{{ __('Date') }}</th>
+                                    <th class="w-36 px-3 py-2 font-medium whitespace-nowrap">{{ __('Type') }}</th>
+                                    <th class="w-40 px-3 py-2 font-medium">{{ __('Account') }}</th>
                                     <th class="px-3 py-2 font-medium">{{ __('Description') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Expense') }}</th>
-                                    <th class="px-3 py-2 text-right font-medium">{{ __('Income') }}</th>
+                                    <th class="w-28 px-3 py-2 text-right font-medium whitespace-nowrap">{{ __('Expense') }}</th>
+                                    <th class="w-28 px-3 py-2 text-right font-medium whitespace-nowrap">{{ __('Income') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -879,14 +879,16 @@
                                         x-on:click='openEntry(@json($entrySummary))'
                                         x-on:keydown.enter='openEntry(@json($entrySummary))'
                                     >
-                                        <td class="px-3 py-2">{{ $entry->entry_date->format('d-m-Y') }}</td>
-                                        <td class="px-3 py-2">{{ __($typeLabel) }}</td>
-                                        <td class="px-3 py-2">{{ $entry->account?->name ?? __('N/A') }}</td>
-                                        <td class="px-3 py-2">{{ $description !== '' ? $description : __('N/A') }}</td>
-                                        <td class="px-3 py-2 text-right">
+                                        <td class="px-3 py-2 whitespace-nowrap">{{ $entry->entry_date->format('d-m-Y') }}</td>
+                                        <td class="px-3 py-2 whitespace-nowrap">{{ __($typeLabel) }}</td>
+                                        <td class="px-3 py-2 truncate">{{ $entry->account?->name ?? __('N/A') }}</td>
+                                        <td class="px-3 py-2">
+                                            <div class="truncate">{{ $description !== '' ? $description : __('N/A') }}</div>
+                                        </td>
+                                        <td class="px-3 py-2 text-right whitespace-nowrap">
                                             {{ $entry->entry_type === 'expense' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-' }}
                                         </td>
-                                        <td class="px-3 py-2 text-right">
+                                        <td class="px-3 py-2 text-right whitespace-nowrap">
                                             {{ $entry->entry_type === 'income' ? \App\Support\CurrencyFormatter::format($entry->amount, $currencyCode) : '-' }}
                                         </td>
                                     </tr>
