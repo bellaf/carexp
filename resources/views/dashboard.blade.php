@@ -763,7 +763,9 @@
                                     'recurring' => 'Recurring',
                                     default => ucfirst((string) $entry->source_type),
                                 };
-                                $description = $entry->reference ?: ($entry->notes ?: '');
+                                $description = $entry->source_type === 'expense'
+                                    ? ($entry->notes ?: ($entry->reference ?: ''))
+                                    : ($entry->reference ?: ($entry->notes ?: ''));
                                 $entrySummary = [
                                     'id' => $entry->id,
                                     'date' => $entry->entry_date->format('d-m-Y'),
@@ -843,7 +845,9 @@
                                             'recurring' => 'Recurring',
                                             default => ucfirst((string) $entry->source_type),
                                         };
-                                        $description = $entry->reference ?: ($entry->notes ?: '');
+                                        $description = $entry->source_type === 'expense'
+                                            ? ($entry->notes ?: ($entry->reference ?: ''))
+                                            : ($entry->reference ?: ($entry->notes ?: ''));
                                         $entrySummary = [
                                             'id' => $entry->id,
                                             'date' => $entry->entry_date->format('d-m-Y'),

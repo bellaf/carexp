@@ -323,7 +323,11 @@ new class extends Component {
                 </div>
 
                 <flux:input wire:model="form.tags" :label="__('Tags (comma separated)')" type="text" />
-                <flux:input wire:model="form.notes" :label="__('Notes (Optional)')" type="text" />
+                <flux:input
+                    wire:model="form.notes"
+                    :label="($form['entry_target'] ?? 'expense') === 'expense' ? __('Description (Optional)') : __('Notes (Optional)')"
+                    type="text"
+                />
                 <flux:checkbox wire:model="form.is_active" :label="__('Active')" />
 
                 <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">

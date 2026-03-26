@@ -648,7 +648,7 @@ new class extends Component {
                 </div>
 
                 <flux:input wire:model="form.tags" :label="__('Tags (comma separated)')" type="text" />
-                <flux:input wire:model="form.notes" :label="__('Notes')" type="text" />
+                <flux:input wire:model="form.notes" :label="__('Description')" type="text" />
 
                 <div class="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
                     <div>

@@ -110,6 +110,7 @@ test('authenticated users can view quick actions page', function () {
         ->get(route('quick-actions.index'))
         ->assertOk()
         ->assertSee('Quick Actions')
+        ->assertSee('Description (Optional)')
         ->assertSee('Add Quick Action');
 });
 
@@ -137,7 +138,7 @@ test('dashboard quick action button posts expense and ledger entry', function ()
         'name' => 'Dartford Toll Single',
         'amount' => 2.50,
         'vendor' => 'Dartford Crossing',
-        'notes' => 'Quick posted',
+        'notes' => 'Westbound crossing',
         'tags' => ['toll'],
         'is_active' => true,
         'sort_order' => 1,
@@ -159,6 +160,7 @@ test('dashboard quick action button posts expense and ledger entry', function ()
         'amount' => '2.50',
         'odometer' => 35225,
         'vendor' => 'Dartford Crossing',
+        'notes' => 'Westbound crossing',
     ]);
 
     $tollsAccount = Account::query()->where('key', 'tolls_expense')->first();
@@ -173,6 +175,7 @@ test('dashboard quick action button posts expense and ledger entry', function ()
         'amount' => '2.50',
         'source_type' => 'expense',
         'reference' => 'Dartford Crossing',
+        'notes' => 'Westbound crossing',
     ]);
 });
 

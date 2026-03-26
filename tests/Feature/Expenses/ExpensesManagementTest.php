@@ -24,6 +24,7 @@ test('authenticated users can view expenses page', function () {
         ->get(route('expenses.index'))
         ->assertOk()
         ->assertSee('Expenses')
+        ->assertSee('Description')
         ->assertSee('Tap any expense to edit it.');
 });
 
@@ -43,6 +44,7 @@ test('user can create an expense', function () {
         ->set('form.amount', '49.99')
         ->set('form.expense_date', now()->format('Y-m-d'))
         ->set('form.vendor', 'Shell')
+        ->set('form.notes', 'Station coffee and screenwash')
         ->set('form.tags', 'personal, fuel')
         ->set('newAttachments', [UploadedFile::fake()->image('receipt.jpg')])
         ->call('saveExpense')
@@ -54,6 +56,7 @@ test('user can create an expense', function () {
         'expense_category_id' => $category->id,
         'amount' => '49.99',
         'vendor' => 'Shell',
+        'notes' => 'Station coffee and screenwash',
     ]);
 
     $expense = Expense::query()
@@ -72,6 +75,7 @@ test('user can create an expense', function () {
         'entry_type' => 'expense',
         'source_type' => 'expense',
         'source_id' => $expense->id,
+        'notes' => 'Station coffee and screenwash',
     ]);
 });
 
@@ -159,8 +163,22 @@ test('user can update and delete their expense', function () {
     Livewire::test('pages::expenses.index')
         ->call('editExpense', $expense->id)
         ->set('form.vendor', 'New Vendor')
+        ->set('form.notes', 'Updated toll description')
         ->call('saveExpense')
-        ->assertHasNoErrors()
+        ->assertHasNoErrors();
+
+    $this->assertDatabaseHas('expenses', [
+        'id' => $expense->id,
+        'vendor' => 'New Vendor',
+        'notes' => 'Updated toll description',
+    ]);
+    $this->assertDatabaseHas('ledger_entries', [
+        'source_type' => 'expense',
+        'source_id' => $expense->id,
+        'notes' => 'Updated toll description',
+    ]);
+
+    Livewire::test('pages::expenses.index')
         ->call('deleteExpense', $expense->id);
 
     $this->assertDatabaseMissing('expenses', [
