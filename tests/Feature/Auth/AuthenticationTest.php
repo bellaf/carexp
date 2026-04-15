@@ -24,6 +24,23 @@ test('users can authenticate using the login screen', function () {
     $this->assertAuthenticated();
 });
 
+test('users are redirected to the dashboard after login even with a stale intended destination', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->withSession(['url.intended' => '/does-not-exist'])
+        ->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('dashboard', absolute: false));
+
+    $this->assertAuthenticated();
+});
+
 test('users can not authenticate with invalid password', function () {
     $user = User::factory()->create();
 
@@ -63,7 +80,7 @@ test('users can logout', function () {
 
     $response = $this->actingAs($user)->post(route('logout'));
 
-    $response->assertRedirect(route('home'));
+    $response->assertRedirect(route('login'));
 
     $this->assertGuest();
 });

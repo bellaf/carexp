@@ -1,15 +1,15 @@
 <?php
 
-test('returns a successful response', function () {
+test('guests visiting the home route are redirected to login', function () {
     $response = $this->get(route('home'));
 
-    $response->assertOk()
-        ->assertSee('Car Expense Tracker')
-        ->assertSee('Track the real cost of running your car.')
-        ->assertSee('Log In')
-        ->assertSee('rel="apple-touch-icon" href="/apple-touch-icon.png"', false)
-        ->assertSee('name="apple-mobile-web-app-capable" content="yes"', false)
-        ->assertSee('name="apple-mobile-web-app-title"', false);
+    $response->assertRedirect(route('login', absolute: false));
+});
+
+test('authenticated users visiting the home route are redirected to the dashboard', function () {
+    $response = $this->actingAs(\App\Models\User::factory()->create())->get(route('home'));
+
+    $response->assertRedirect(route('dashboard', absolute: false));
 });
 
 test('ships app-specific icon assets', function () {
