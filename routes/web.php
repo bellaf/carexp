@@ -15,6 +15,7 @@ use App\Models\RecurringTransaction;
 use App\Models\VehicleObligation;
 use App\Support\ExpenseAccountResolver;
 use App\Support\LatestOdometerResolver;
+use App\Support\OdometerAnomalyDetector;
 use App\Support\OwnershipCostMetrics;
 use App\Support\VehicleObligationStatus;
 use Carbon\CarbonImmutable;
@@ -385,6 +386,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'start_odometer' => ['nullable', 'integer', 'min:0'],
             'locations' => ['nullable', 'string', 'max:255'],
             'full_tank' => ['nullable', 'boolean'],
+            'confirm_odometer_anomaly' => ['nullable', 'string', 'size:64'],
         ]);
 
         $car = $quickAction->car_id !== null
@@ -450,6 +452,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
             $fullTankToPost = $request->exists('full_tank')
                 ? $request->boolean('full_tank')
                 : (bool) $quickAction->fuel_full_tank;
+            $odometerAnalysis = app(OdometerAnomalyDetector::class)->analyze(
+                $car,
+                now()->toDateString(),
+                $odometerToPost,
+            );
+
+            if ($odometerAnalysis['status'] === 'error') {
+                return redirect()
+                    ->route('dashboard')
+                    ->withErrors(['quick_action_odometer' => $odometerAnalysis['message']]);
+            }
+
+            if (
+                $odometerAnalysis['status'] === 'warning'
+                && ($validated['confirm_odometer_anomaly'] ?? null) !== $odometerAnalysis['fingerprint']
+            ) {
+                return redirect()
+                    ->route('dashboard')
+                    ->with('odometer_anomaly', [
+                        'message' => $odometerAnalysis['message'],
+                        'fingerprint' => $odometerAnalysis['fingerprint'],
+                        'run_url' => route('dashboard.quick-actions.run', $quickAction),
+                        'amount' => $amountToPost,
+                        'fuel_volume' => $fuelVolumeToPost,
+                        'odometer' => $odometerToPost,
+                        'full_tank' => $fullTankToPost,
+                    ]);
+            }
 
             DB::transaction(function () use ($user, $car, $quickAction, $amountToPost, $fuelVolumeToPost, $odometerToPost, $fullTankToPost): void {
                 $fuelVolumeUnit = in_array($user->volume_unit, ['gallons', 'litres'], true)

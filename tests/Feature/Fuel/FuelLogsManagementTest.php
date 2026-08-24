@@ -95,6 +95,75 @@ test('fuel log full tank value is normalized from string input', function () {
     expect((bool) $fuelLog->full_tank)->toBeTrue();
 });
 
+test('fuel log with a wild odometer interval requires explicit confirmation', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    foreach ([10000, 10300, 10600, 10900, 11200] as $index => $odometer) {
+        FuelLog::factory()->for($car)->create([
+            'user_id' => $user->id,
+            'log_date' => now()->subDays(10 - $index)->toDateString(),
+            'odometer' => $odometer,
+        ]);
+    }
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.log_date', now()->toDateString())
+        ->set('form.odometer', '13000')
+        ->set('form.volume', '10.000')
+        ->set('form.total_cost', '45.00')
+        ->set('form.price_per_unit', '')
+        ->set('form.full_tank', true)
+        ->call('saveFuelLog')
+        ->assertSet('odometerWarning.status', 'warning')
+        ->assertSee('Check odometer reading')
+        ->call('confirmOdometerWarning')
+        ->assertHasNoErrors()
+        ->assertSet('showForm', false);
+
+    $this->assertDatabaseHas('fuel_logs', [
+        'user_id' => $user->id,
+        'car_id' => $car->id,
+        'odometer' => 13000,
+    ]);
+});
+
+test('fuel log below the previous chronological odometer is rejected', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create();
+
+    FuelLog::factory()->for($car)->create([
+        'user_id' => $user->id,
+        'log_date' => now()->subDay()->toDateString(),
+        'odometer' => 12000,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.log_date', now()->toDateString())
+        ->set('form.odometer', '11900')
+        ->set('form.volume', '10.000')
+        ->set('form.total_cost', '45.00')
+        ->set('form.price_per_unit', '')
+        ->set('form.full_tank', true)
+        ->call('saveFuelLog')
+        ->assertHasErrors(['form.odometer'])
+        ->assertSee('cannot be lower than the previous reading');
+
+    $this->assertDatabaseMissing('fuel_logs', [
+        'user_id' => $user->id,
+        'car_id' => $car->id,
+        'odometer' => 11900,
+    ]);
+});
+
 test('new fuel log defaults odometer from latest known car reading', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create([
@@ -381,7 +450,7 @@ test('fuel logs page orders entries by odometer so displayed efficiency matches 
 
     FuelLog::factory()->for($car)->create([
         'user_id' => $user->id,
-        'log_date' => '2026-03-03',
+        'log_date' => now()->subDay()->toDateString(),
         'odometer' => 10000,
         'volume' => 8,
         'volume_unit' => 'gallons',
@@ -391,7 +460,7 @@ test('fuel logs page orders entries by odometer so displayed efficiency matches 
 
     FuelLog::factory()->for($car)->create([
         'user_id' => $user->id,
-        'log_date' => '2026-03-01',
+        'log_date' => now()->subDays(2)->toDateString(),
         'odometer' => 10200,
         'volume' => 10,
         'volume_unit' => 'gallons',

@@ -312,6 +312,63 @@ test('dashboard fuel quick action posts fuel log and ledger entry', function () 
     ]);
 });
 
+test('dashboard fuel quick action requires confirmation for a wild odometer interval', function () {
+    $user = User::factory()->create();
+    $car = $user->cars()->create([
+        'make' => 'Honda',
+        'model' => 'Civic',
+        'year' => 2018,
+        'current_odometer' => 11200,
+        'is_default' => true,
+    ]);
+
+    foreach ([10000, 10300, 10600, 10900, 11200] as $index => $odometer) {
+        FuelLog::factory()->for($car)->create([
+            'user_id' => $user->id,
+            'log_date' => now()->subDays(10 - $index)->toDateString(),
+            'odometer' => $odometer,
+        ]);
+    }
+
+    $quickAction = QuickAction::factory()->for($user)->create([
+        'car_id' => $car->id,
+        'entry_target' => 'fuel_log',
+        'name' => 'Quick Fuel',
+        'amount' => 40.00,
+        'fuel_volume' => 30.000,
+        'fuel_full_tank' => true,
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->post(route('dashboard.quick-actions.run', $quickAction), [
+            'odometer' => 13000,
+        ])
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHas('odometer_anomaly');
+
+    $this->assertDatabaseMissing('fuel_logs', [
+        'user_id' => $user->id,
+        'car_id' => $car->id,
+        'odometer' => 13000,
+    ]);
+
+    $anomaly = $response->getSession()->get('odometer_anomaly');
+
+    $this->actingAs($user)
+        ->post(route('dashboard.quick-actions.run', $quickAction), [
+            'odometer' => 13000,
+            'confirm_odometer_anomaly' => $anomaly['fingerprint'],
+        ])
+        ->assertRedirect(route('dashboard'));
+
+    $this->assertDatabaseHas('fuel_logs', [
+        'user_id' => $user->id,
+        'car_id' => $car->id,
+        'odometer' => 13000,
+    ]);
+});
+
 test('dashboard fuel quick action can unset full tank flag at run time', function () {
     $user = User::factory()->create([
         'measurement_system' => 'metric',

@@ -34,6 +34,33 @@
             </flux:text>
         </div>
 
+        @error('quick_action_odometer')
+            <flux:callout variant="danger" icon="x-circle" :heading="__('Fuel log not saved')">
+                <flux:text>{{ $message }}</flux:text>
+            </flux:callout>
+        @enderror
+
+        @if (session('odometer_anomaly'))
+            @php
+                $odometerAnomaly = session('odometer_anomaly');
+            @endphp
+            <flux:callout variant="warning" icon="exclamation-triangle" :heading="__('Check odometer reading')">
+                <div class="space-y-3">
+                    <flux:text>{{ $odometerAnomaly['message'] }}</flux:text>
+                    <form method="POST" action="{{ $odometerAnomaly['run_url'] }}" class="flex flex-wrap gap-2">
+                        @csrf
+                        <input type="hidden" name="amount" value="{{ $odometerAnomaly['amount'] }}">
+                        <input type="hidden" name="fuel_volume" value="{{ $odometerAnomaly['fuel_volume'] }}">
+                        <input type="hidden" name="odometer" value="{{ $odometerAnomaly['odometer'] }}">
+                        <input type="hidden" name="full_tank" value="{{ $odometerAnomaly['full_tank'] ? '1' : '0' }}">
+                        <input type="hidden" name="confirm_odometer_anomaly" value="{{ $odometerAnomaly['fingerprint'] }}">
+                        <flux:button type="submit" variant="primary">{{ __('Save Anyway') }}</flux:button>
+                        <flux:button :href="route('dashboard')" variant="ghost">{{ __('Cancel') }}</flux:button>
+                    </form>
+                </div>
+            </flux:callout>
+        @endif
+
         <flux:card class="p-2">
             <div class="flex flex-wrap gap-2" role="tablist" aria-label="{{ __('Dashboard Sections') }}">
                 <button

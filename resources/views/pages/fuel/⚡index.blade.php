@@ -6,6 +6,7 @@ use App\Models\LedgerEntry;
 use App\Support\CurrencyFormatter;
 use App\Support\FuelEfficiencyCalculator;
 use App\Support\LatestOdometerResolver;
+use App\Support\OdometerAnomalyDetector;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,13 @@ new class extends Component {
     public bool $showForm = false;
     public bool $confirmingDelete = false;
     public ?int $editingFuelLogId = null;
+
+    /**
+     * @var array<string, mixed>|null
+     */
+    public ?array $odometerWarning = null;
+
+    public ?string $confirmedOdometerWarningFingerprint = null;
 
     /**
      * @var array<string, mixed>
@@ -33,6 +41,8 @@ new class extends Component {
     public function startCreating(): void
     {
         $this->editingFuelLogId = null;
+        $this->odometerWarning = null;
+        $this->confirmedOdometerWarningFingerprint = null;
         $this->resetForm();
 
         if ($this->cars->isNotEmpty()) {
@@ -68,6 +78,8 @@ new class extends Component {
     {
         $fuelLog = Auth::user()->fuelLogs()->with('ledgerEntry')->findOrFail($fuelLogId);
 
+        $this->odometerWarning = null;
+        $this->confirmedOdometerWarningFingerprint = null;
         $this->editingFuelLogId = $fuelLog->id;
         $this->form = [
             'car_id' => (string) $fuelLog->car_id,
@@ -87,6 +99,34 @@ new class extends Component {
     public function saveFuelLog(): void
     {
         $form = $this->validate($this->fuelLogRules(), $this->fuelLogMessages())['form'];
+        $car = Auth::user()->cars()->findOrFail((int) $form['car_id']);
+        $odometerAnalysis = app(OdometerAnomalyDetector::class)->analyze(
+            $car,
+            (string) $form['log_date'],
+            (int) $form['odometer'],
+            $this->editingFuelLogId,
+        );
+
+        if ($odometerAnalysis['status'] === 'error') {
+            $this->odometerWarning = null;
+            $this->confirmedOdometerWarningFingerprint = null;
+            $this->addError('form.odometer', (string) $odometerAnalysis['message']);
+
+            return;
+        }
+
+        if (
+            $odometerAnalysis['status'] === 'warning'
+            && $this->confirmedOdometerWarningFingerprint !== $odometerAnalysis['fingerprint']
+        ) {
+            $this->odometerWarning = $odometerAnalysis;
+            $this->confirmedOdometerWarningFingerprint = null;
+
+            return;
+        }
+
+        $this->odometerWarning = null;
+        $this->confirmedOdometerWarningFingerprint = null;
         $normalized = $this->normalizeFuelLogAttributes($form);
         $attributes = $normalized['attributes'];
         $amount = $normalized['amount'];
@@ -116,6 +156,22 @@ new class extends Component {
         $this->dispatch('fuel-log-saved');
     }
 
+    public function confirmOdometerWarning(): void
+    {
+        if ($this->odometerWarning === null || $this->odometerWarning['fingerprint'] === null) {
+            return;
+        }
+
+        $this->confirmedOdometerWarningFingerprint = (string) $this->odometerWarning['fingerprint'];
+        $this->saveFuelLog();
+    }
+
+    public function dismissOdometerWarning(): void
+    {
+        $this->odometerWarning = null;
+        $this->confirmedOdometerWarningFingerprint = null;
+    }
+
     public function deleteFuelLog(int $fuelLogId): void
     {
         DB::transaction(function () use ($fuelLogId): void {
@@ -137,6 +193,8 @@ new class extends Component {
         $this->showForm = false;
         $this->editingFuelLogId = null;
         $this->confirmingDelete = false;
+        $this->odometerWarning = null;
+        $this->confirmedOdometerWarningFingerprint = null;
         $this->resetForm();
     }
 
@@ -507,6 +565,22 @@ new class extends Component {
                     <flux:input wire:model="form.total_cost" :label="__('Total Cost') . ' (' . $this->currencySymbol() . ')'" type="number" min="0.01" step="0.01" required />
                     <flux:input wire:model="form.price_per_unit" :label="__('Price Per Unit (optional)') . ' (' . $this->currencySymbol() . '/' . $this->volumeUnitLabel($form['volume_unit']) . ')'" type="number" min="0.001" step="0.001" />
                 </div>
+
+                @if ($odometerWarning !== null)
+                    <flux:callout variant="warning" icon="exclamation-triangle" :heading="__('Check odometer reading')">
+                        <div class="space-y-3">
+                            <flux:text>{{ $odometerWarning['message'] }}</flux:text>
+                            <div class="flex flex-wrap gap-2">
+                                <flux:button type="button" variant="primary" wire:click="confirmOdometerWarning">
+                                    {{ __('Save Anyway') }}
+                                </flux:button>
+                                <flux:button type="button" variant="ghost" wire:click="dismissOdometerWarning">
+                                    {{ __('Go Back and Correct') }}
+                                </flux:button>
+                            </div>
+                        </div>
+                    </flux:callout>
+                @endif
 
                 <flux:checkbox wire:model="form.full_tank" :label="__('Full tank fill-up')" />
 

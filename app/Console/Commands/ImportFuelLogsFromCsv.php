@@ -7,6 +7,7 @@ use App\Models\Car;
 use App\Models\FuelLog;
 use App\Models\LedgerEntry;
 use App\Models\User;
+use App\Support\OdometerAnomalyDetector;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,8 @@ class ImportFuelLogsFromCsv extends Command
         {--date-format=d/m/Y : Date format used in CSV}
         {--full-tank=1 : Mark imported rows as full tank (1 or 0)}
         {--dry-run : Validate CSV and show summary without writing}
-        {--allow-duplicates : Import duplicates instead of skipping existing rows}';
+        {--allow-duplicates : Import duplicates instead of skipping existing rows}
+        {--allow-odometer-anomalies : Import statistically unusual odometer intervals after review}';
 
     /**
      * The console command description.
@@ -84,6 +86,7 @@ class ImportFuelLogsFromCsv extends Command
         $dateFormat = (string) $this->option('date-format');
         $dryRun = (bool) $this->option('dry-run');
         $allowDuplicates = (bool) $this->option('allow-duplicates');
+        $allowOdometerAnomalies = (bool) $this->option('allow-odometer-anomalies');
 
         $handle = fopen($csvPath, 'r');
 
@@ -178,6 +181,27 @@ class ImportFuelLogsFromCsv extends Command
 
             if ($existing !== null && ! $allowDuplicates) {
                 $duplicates++;
+
+                continue;
+            }
+
+            $odometerAnalysis = app(OdometerAnomalyDetector::class)->analyze(
+                $car,
+                $logDate,
+                $odometer,
+            );
+
+            if ($odometerAnalysis['status'] === 'error') {
+                $skipped++;
+                $this->warn("Line {$lineNumber}: skipped ({$odometerAnalysis['message']})");
+
+                continue;
+            }
+
+            if ($odometerAnalysis['status'] === 'warning' && ! $allowOdometerAnomalies) {
+                $skipped++;
+                $this->warn("Line {$lineNumber}: skipped ({$odometerAnalysis['message']})");
+                $this->line('Review the source data and rerun with --allow-odometer-anomalies to import it.');
 
                 continue;
             }

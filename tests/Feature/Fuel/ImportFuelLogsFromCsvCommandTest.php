@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Car;
+use App\Models\FuelLog;
 use App\Models\User;
 
 test('command imports fuel logs from csv and creates linked ledger entries', function () {
@@ -72,6 +73,60 @@ test('command dry run validates rows without writing data', function () {
 
     $this->assertDatabaseCount('fuel_logs', 0);
     $this->assertDatabaseCount('ledger_entries', 0);
+
+    unlink($csvPath);
+});
+
+test('command skips wild odometer intervals unless they are explicitly allowed', function () {
+    $user = User::factory()->create();
+    $car = Car::factory()->for($user)->create([
+        'is_default' => true,
+        'current_odometer' => 11200,
+    ]);
+
+    foreach ([10000, 10300, 10600, 10900, 11200] as $index => $odometer) {
+        FuelLog::factory()->for($car)->create([
+            'user_id' => $user->id,
+            'log_date' => '2026-01-0'.($index + 1),
+            'odometer' => $odometer,
+        ]);
+    }
+
+    $csvPath = base_path('tests/fixtures/fuel-import-anomaly.csv');
+    @mkdir(dirname($csvPath), 0777, true);
+
+    file_put_contents($csvPath, implode("\n", [
+        'Date,Odo Read,litres,Cost (£),per l,MPG',
+        '10/01/2026,13000,35.00,£47.25,£1.350,',
+    ]));
+
+    $arguments = [
+        '--file' => $csvPath,
+        '--user-id' => $user->id,
+        '--car-id' => $car->id,
+        '--volume-unit' => 'litres',
+        '--date-format' => 'd/m/Y',
+    ];
+
+    $this->artisan('app:import-fuel-logs-from-csv', $arguments)
+        ->assertSuccessful();
+
+    $this->assertDatabaseMissing('fuel_logs', [
+        'user_id' => $user->id,
+        'car_id' => $car->id,
+        'odometer' => 13000,
+    ]);
+
+    $this->artisan('app:import-fuel-logs-from-csv', [
+        ...$arguments,
+        '--allow-odometer-anomalies' => true,
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('fuel_logs', [
+        'user_id' => $user->id,
+        'car_id' => $car->id,
+        'odometer' => 13000,
+    ]);
 
     unlink($csvPath);
 });
