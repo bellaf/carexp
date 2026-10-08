@@ -50,10 +50,6 @@
             </form>
         </flux:card>
 
-        @if ($selectedReport === 'fuel_costs')
-            @include('components.fuel-cost-report')
-        @endif
-
         @if ($selectedReport === 'summary')
             <div class="grid gap-4 md:grid-cols-3">
                 <flux:card class="space-y-3">
@@ -235,23 +231,15 @@
                 <flux:card class="space-y-3">
                     <flux:text>{{ __('Fuel Spend') }}</flux:text>
                     <flux:heading>{{ $fuelSummary['total_spend'] }}</flux:heading>
-                    @if ($fuelSparklines['spend'] !== null)
-                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel spend trend sparkline') }}">
-                            <polyline points="{{ $fuelSparklines['spend']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-rose-500 dark:text-rose-400" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                    @endif
                 </flux:card>
                 <flux:card class="space-y-3">
                     <flux:text>{{ __('Avg Price / Volume') }}</flux:text>
                     <flux:heading>{{ $fuelSummary['average_price'] }}</flux:heading>
                     <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Avg efficiency') }}: {{ $fuelSummary['average_efficiency'] }} {{ $efficiencyLabel }}</flux:text>
-                    @if ($fuelSparklines['efficiency'] !== null)
-                        <svg viewBox="0 0 100 36" class="h-10 w-full overflow-visible" aria-label="{{ __('Fuel efficiency trend sparkline') }}">
-                            <polyline points="{{ $fuelSparklines['efficiency']['points'] }}" fill="none" stroke="currentColor" stroke-width="3" class="text-emerald-500 dark:text-emerald-400" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                    @endif
                 </flux:card>
             </div>
+
+            @include('components.fuel-cost-report')
 
             <flux:card class="space-y-3">
                 <flux:heading>{{ __('Fuel Trend') }}</flux:heading>

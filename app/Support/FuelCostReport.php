@@ -19,10 +19,6 @@ class FuelCostReport
 
             return ['month' => $log->log_date->format('Y-m'), 'litres' => $litres, 'cost' => $cost, 'price' => $cost !== null && $litres > 0 ? $cost * 100 / $litres : null];
         });
-        $priced = $receipts->whereNotNull('price');
-        $spend = (float) $receipts->sum('cost');
-        $pricedLitres = (float) $priced->sum('litres');
-        $price = $pricedLitres > 0 ? (float) $priced->sum('cost') * 100 / $pricedLitres : null;
         $unit = strtoupper($currency) === 'GBP' ? 'p/L' : strtoupper($currency).' cents/L';
         $months = collect();
 
@@ -48,20 +44,10 @@ class FuelCostReport
         }
 
         return [
-            'count' => $logs->count(), 'spend' => $spend,
-            'litres' => (float) $receipts->sum('litres'), 'price' => $price,
-            'lowest_price' => $priced->min('price'), 'highest_price' => $priced->max('price'),
-            'average_fill_cost' => $receipts->whereNotNull('cost')->count() > 0 ? $spend / $receipts->whereNotNull('cost')->count() : null,
-            'average_fill_litres' => $logs->count() > 0 ? (float) $receipts->sum('litres') / $logs->count() : null,
-            'missing_mileage' => $logs->whereNull('odometer')->count(),
-            'missing_cost' => $receipts->whereNull('cost')->count(),
-            'efficiency' => FuelEfficiencyCalculator::averageForLogs($logs, $measurementSystem),
-            'combined_intervals' => $logs->filter(fn (FuelLog $log): bool => $log->efficiency_fill_count > 1)->count(),
             'price_unit' => $unit, 'months' => $months,
             'charts' => [
                 ['key' => 'spend', 'title' => 'Monthly fuel spending', 'unit' => CurrencyFormatter::symbol($currency)],
                 ['key' => 'price', 'title' => 'Fuel price per litre', 'unit' => $unit],
-                ['key' => 'litres', 'title' => 'Litres purchased', 'unit' => 'L'],
                 ['key' => 'efficiency', 'title' => 'Fuel efficiency', 'unit' => $measurementSystem === 'metric' ? 'KM/L' : 'MPG'],
             ],
         ];

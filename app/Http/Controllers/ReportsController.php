@@ -26,7 +26,6 @@ class ReportsController extends Controller
             'summary' => 'Summary',
             'category' => 'Category Breakdown',
             'fuel' => 'Fuel Analysis',
-            'fuel_costs' => 'Fuel Costs & Trends',
             'obligations' => 'Obligations',
             'ownership' => 'Ownership Metrics',
         ];
@@ -72,7 +71,7 @@ class ReportsController extends Controller
         $vehicleObligations = $this->filteredVehicleObligations($user, $selectedCarId, $startDate, $endDate);
 
         return view('reports', [
-            'fuelCosts' => $selectedReport === 'fuel_costs' ? \App\Support\FuelCostReport::build($fuelLogs, $user->preferred_currency, $user->measurement_system, $startDate, $endDate) : null,
+            'fuelCosts' => $selectedReport === 'fuel' ? \App\Support\FuelCostReport::build($fuelLogs, $user->preferred_currency, $user->measurement_system, $startDate, $endDate) : null,
             'cars' => $cars,
             'currencyCode' => $user->preferred_currency,
             'efficiencyLabel' => $user->measurement_system === 'metric' ? 'KM/L' : 'MPG',
@@ -95,12 +94,6 @@ class ReportsController extends Controller
                 'expenses' => $this->buildSparkline($monthlyRows, 'expense_total_value'),
                 'reimbursements' => $this->buildSparkline($monthlyRows, 'income_total_value'),
                 'net_cost' => $this->buildSparkline($monthlyRows, 'net_cost_value'),
-            ],
-            'fuelSparklines' => [
-                'spend' => $this->buildSparkline($fuelMonthlyRows, 'total_spend_value'),
-                'fill_count' => $this->buildSparkline($fuelMonthlyRows, 'fill_count_value'),
-                'volume' => $this->buildSparkline($fuelMonthlyRows, 'total_volume_value'),
-                'efficiency' => $this->buildSparkline($fuelMonthlyRows, 'average_efficiency_value'),
             ],
         ]);
     }

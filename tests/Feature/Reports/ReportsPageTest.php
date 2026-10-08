@@ -149,8 +149,8 @@ test('fuel report shows fuel metrics from fuel logs', function () {
         ->assertSee('45.00')
         ->assertSee('30.000')
         ->assertSee('33.300')
-        ->assertSee('Fuel spend trend sparkline')
-        ->assertSee('Fuel efficiency trend sparkline');
+        ->assertSee('Monthly fuel spending line chart')
+        ->assertSee('Fuel efficiency line chart');
 });
 
 test('fuel report shows weighted average efficiency instead of arithmetic mean', function () {
@@ -413,7 +413,7 @@ test('ownership report falls back to recorded odometer history when purchase odo
         ->assertSee('$0.06/mi');
 });
 
-test('fuel costs report normalizes litres and weights prices while including missing mileage receipts', function () {
+test('fuel analysis charts normalize litres and weight prices including missing mileage receipts', function () {
     $user = User::factory()->create(['preferred_currency' => 'GBP', 'measurement_system' => 'imperial']);
     $car = Car::factory()->for($user)->create();
     $entry = LedgerEntry::factory()->for($car)->create(['user_id' => $user->id, 'amount' => 60]);
@@ -431,17 +431,13 @@ test('fuel costs report normalizes litres and weights prices while including mis
         'log_date' => '2026-03-02', 'volume' => 10, 'volume_unit' => 'litres',
         'price_per_unit' => null, 'ledger_entry_id' => null, 'calculated_efficiency' => null,
     ]);
-    $this->actingAs($user)->get(route('reports.index', ['report' => 'fuel_costs', 'period' => 'full_year', 'year' => 2026]))
+    $this->actingAs($user)->get(route('reports.index', ['report' => 'fuel', 'period' => 'full_year', 'year' => 2026]))
         ->assertOk()->assertSee('Monthly fuel spending')->assertSee('Fuel price per litre')
-        ->assertSee('150.00')->assertSee('Receipts without mileage')
-        ->assertSee('excluded from price averages')
+        ->assertSee('150.00')->assertDontSee('Fuel Costs &amp; Trends')
         ->assertViewHas('fuelCosts', function (array $report): bool {
-            expect($report['spend'])->toBe(130.0)
-                ->and(round($report['litres'], 4))->toBe(95.4609)
-                ->and(round($report['price'], 6))->toBe(round(13000 / 85.4609, 6))
-                ->and($report['missing_cost'])->toBe(1)
-                ->and($report['missing_mileage'])->toBe(1)
-                ->and($report['efficiency'])->toBe(30.0)
+            expect(round($report['months'][0]['price'], 2))->toBe(150.0)
+                ->and(round($report['months'][2]['price'], 6))->toBe(round(7000 / 45.4609, 6))
+                ->and($report['months'][2]['efficiency'])->toBe(30.0)
                 ->and($report['months'])->toHaveCount(12)
                 ->and($report['months'][1]['spend'])->toBe(0.0)
                 ->and($report['months'][1]['price'])->toBeNull();
@@ -450,7 +446,7 @@ test('fuel costs report normalizes litres and weights prices while including mis
         });
 });
 
-test('fuel costs report respects user car and date filters', function () {
+test('fuel analysis charts respect user car and date filters', function () {
     $user = User::factory()->create();
     $car = Car::factory()->for($user)->create();
     $otherCar = Car::factory()->for($user)->create();
@@ -458,13 +454,13 @@ test('fuel costs report respects user car and date filters', function () {
     foreach ([[$car, '2026-01-01', 10], [$car, '2025-01-01', 20], [$otherCar, '2026-01-01', 30], [$foreignCar, '2026-01-01', 40]] as [$targetCar, $date, $volume]) {
         FuelLog::factory()->for($targetCar)->create(['log_date' => $date, 'volume' => $volume, 'volume_unit' => 'litres', 'price_per_unit' => 1.5]);
     }
-    $this->actingAs($user)->get(route('reports.index', ['report' => 'fuel_costs', 'period' => 'full_year', 'year' => 2026, 'car_id' => $car->id]))
-        ->assertOk()->assertViewHas('fuelCosts', fn (array $report): bool => $report['count'] === 1 && $report['spend'] === 15.0 && $report['litres'] === 10.0);
+    $this->actingAs($user)->get(route('reports.index', ['report' => 'fuel', 'period' => 'full_year', 'year' => 2026, 'car_id' => $car->id]))
+        ->assertOk()->assertViewHas('fuelCosts', fn (array $report): bool => $report['months'][0]['fills'] === 1 && $report['months'][0]['spend'] === 15.0 && $report['months'][0]['litres'] === 10.0);
 });
 
-test('fuel costs report shows an empty state and uses currency appropriate price labels', function () {
+test('fuel analysis charts show an empty state and currency appropriate price labels', function () {
     $user = User::factory()->create(['preferred_currency' => 'EUR']);
-    $this->actingAs($user)->get(route('reports.index', ['report' => 'fuel_costs', 'period' => 'all_time']))
-        ->assertOk()->assertSee('No fuel receipts found for this period.')
-        ->assertViewHas('fuelCosts', fn (array $report): bool => $report['price_unit'] === 'EUR cents/L' && $report['price'] === null);
+    $this->actingAs($user)->get(route('reports.index', ['report' => 'fuel', 'period' => 'all_time']))
+        ->assertOk()->assertSee('No fuel data found for this period.')
+        ->assertViewHas('fuelCosts', fn (array $report): bool => $report['price_unit'] === 'EUR cents/L' && $report['months']->isEmpty());
 });
