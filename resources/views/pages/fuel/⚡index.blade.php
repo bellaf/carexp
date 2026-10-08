@@ -522,7 +522,7 @@ new class extends Component {
                     </flux:select>
 
                     <flux:input wire:model="form.log_date" :label="__('Date')" type="date" required />
-                    <flux:input wire:model="form.odometer" :label="__('Odometer (optional)')" :description="__('Leave blank if mileage was not recorded on the receipt.')" type="number" min="0" step="1" />
+                    <flux:input wire:model="form.odometer" :label="__('Odometer (optional)')" :description:trailing="__('Leave blank if mileage was not recorded on the receipt.')" type="number" min="0" step="1" />
                     <flux:input wire:model="form.volume" :label="__('Volume') . ' (' . $this->volumeUnitLabel($form['volume_unit']) . ')'" type="number" min="0.001" step="0.001" required />
                     <flux:input wire:model="form.total_cost" :label="__('Total Cost') . ' (' . $this->currencySymbol() . ')'" type="number" min="0.01" step="0.01" required />
                     <flux:input wire:model="form.price_per_unit" :label="__('Price Per Unit (optional)') . ' (' . $this->currencySymbol() . '/' . $this->volumeUnitLabel($form['volume_unit']) . ')'" type="number" min="0.001" step="0.001" />

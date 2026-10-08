@@ -526,3 +526,20 @@ test('missing mileage preserves receipt costs and combines fuel until the next k
     expect($missing->refresh()->odometer)->toBeNull()
         ->and($end->refresh()->efficiency_fill_count)->toBe(2);
 });
+
+test('fuel form places mileage explanation below the odometer input', function () {
+    $user = User::factory()->create();
+    Car::factory()->for($user)->create();
+    $this->actingAs($user);
+
+    $html = Livewire::test('pages::fuel.index')->call('startCreating')->html();
+    $odometerPosition = strpos($html, 'wire:model="form.odometer"');
+    $descriptionPosition = strpos($html, 'Leave blank if mileage was not recorded on the receipt.');
+    $volumePosition = strpos($html, 'wire:model="form.volume"');
+
+    expect($odometerPosition)->not->toBeFalse()
+        ->and($descriptionPosition)->not->toBeFalse()
+        ->and($volumePosition)->not->toBeFalse()
+        ->and($descriptionPosition)->toBeGreaterThan($odometerPosition)
+        ->and($volumePosition)->toBeGreaterThan($descriptionPosition);
+});
