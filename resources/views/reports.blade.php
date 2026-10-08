@@ -50,6 +50,10 @@
             </form>
         </flux:card>
 
+        @if ($selectedReport === 'fuel_costs')
+            @include('components.fuel-cost-report')
+        @endif
+
         @if ($selectedReport === 'summary')
             <div class="grid gap-4 md:grid-cols-3">
                 <flux:card class="space-y-3">

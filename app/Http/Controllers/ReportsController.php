@@ -26,6 +26,7 @@ class ReportsController extends Controller
             'summary' => 'Summary',
             'category' => 'Category Breakdown',
             'fuel' => 'Fuel Analysis',
+            'fuel_costs' => 'Fuel Costs & Trends',
             'obligations' => 'Obligations',
             'ownership' => 'Ownership Metrics',
         ];
@@ -71,6 +72,7 @@ class ReportsController extends Controller
         $vehicleObligations = $this->filteredVehicleObligations($user, $selectedCarId, $startDate, $endDate);
 
         return view('reports', [
+            'fuelCosts' => $selectedReport === 'fuel_costs' ? \App\Support\FuelCostReport::build($fuelLogs, $user->preferred_currency, $user->measurement_system, $startDate, $endDate) : null,
             'cars' => $cars,
             'currencyCode' => $user->preferred_currency,
             'efficiencyLabel' => $user->measurement_system === 'metric' ? 'KM/L' : 'MPG',
