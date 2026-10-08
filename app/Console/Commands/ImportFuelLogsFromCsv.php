@@ -155,7 +155,7 @@ class ImportFuelLogsFromCsv extends Command
             $price = $priceColumn !== null ? $this->parseDecimal((string) ($row[$priceColumn] ?? '')) : null;
             $efficiency = $efficiencyColumn !== null ? $this->parseDecimal((string) ($row[$efficiencyColumn] ?? '')) : null;
 
-            if ($dateText === '' || $odometer === null || $volume === null || $amount === null || $volume <= 0 || $amount <= 0) {
+            if ($dateText === '' || (trim((string) ($row[$odometerColumn] ?? '')) !== '' && ($odometer === null || $odometer < 0)) || $volume === null || $amount === null || $volume <= 0 || $amount <= 0) {
                 $skipped++;
                 $this->warn("Line {$lineNumber}: skipped (missing/invalid date, odometer, volume, or cost).");
 
@@ -255,6 +255,7 @@ class ImportFuelLogsFromCsv extends Command
 
         if (! $dryRun) {
             $this->syncCarCurrentOdometer($car);
+            \App\Support\FuelEfficiencyCalculator::recalculate($user->fuelLogs()->where('car_id', $car->id)->get(), $user->measurement_system);
         }
 
         $this->newLine();
@@ -409,12 +410,13 @@ class ImportFuelLogsFromCsv extends Command
     {
         $latestLog = FuelLog::query()
             ->where('car_id', $car->id)
+            ->whereNotNull('odometer')
             ->orderByDesc('log_date')
             ->orderByDesc('id')
             ->first();
 
         $car->update([
-            'current_odometer' => $latestLog?->odometer,
+            'current_odometer' => $latestLog?->odometer ?? $car->current_odometer,
         ]);
     }
 }

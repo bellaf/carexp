@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\FuelLog;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -69,7 +68,7 @@ class RecalculateFuelEfficiencies extends Command
             $userCarIds->each(function (int $currentCarId) use ($user, &$carCount, &$fuelLogCount, &$updatedCount): void {
                 $fuelLogs = $user->fuelLogs()
                     ->where('car_id', $currentCarId)
-                    ->orderBy('odometer')
+                    ->orderBy('log_date')
                     ->orderBy('id')
                     ->get();
 
@@ -100,44 +99,6 @@ class RecalculateFuelEfficiencies extends Command
 
     private function recalculateFuelEfficiencies(Collection $fuelLogs, string $measurementSystem): int
     {
-        $previousLog = null;
-        $updatedCount = 0;
-
-        $fuelLogs->each(function (FuelLog $fuelLog) use ($measurementSystem, &$previousLog, &$updatedCount): void {
-            $efficiency = null;
-
-            if ($fuelLog->full_tank && $previousLog !== null && $previousLog->full_tank) {
-                $distance = (int) $fuelLog->odometer - (int) $previousLog->odometer;
-                $volumeForEfficiency = $this->volumeForMeasurementSystem((float) $fuelLog->volume, (string) $fuelLog->volume_unit, $measurementSystem);
-
-                if ($distance > 0 && $volumeForEfficiency > 0) {
-                    $efficiency = round($distance / $volumeForEfficiency, 3);
-                }
-            }
-
-            $currentEfficiency = $fuelLog->calculated_efficiency !== null ? (float) $fuelLog->calculated_efficiency : null;
-
-            if ($currentEfficiency !== $efficiency) {
-                $fuelLog->update(['calculated_efficiency' => $efficiency]);
-                $updatedCount++;
-            }
-
-            $previousLog = $fuelLog;
-        });
-
-        return $updatedCount;
-    }
-
-    private function volumeForMeasurementSystem(float $volume, string $volumeUnit, string $measurementSystem): float
-    {
-        if ($measurementSystem === 'metric') {
-            return $volumeUnit === 'litres'
-                ? $volume
-                : ($volume * 4.54609);
-        }
-
-        return $volumeUnit === 'gallons'
-            ? $volume
-            : ($volume / 4.54609);
+        return \App\Support\FuelEfficiencyCalculator::recalculate($fuelLogs, $measurementSystem);
     }
 }

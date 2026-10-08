@@ -29,14 +29,19 @@ class OdometerAnomalyDetector
     public function analyze(
         Car $car,
         CarbonInterface|string $logDate,
-        int $odometer,
+        ?int $odometer,
         ?int $ignoredFuelLogId = null,
     ): array {
+        if ($odometer === null) {
+            return $this->result();
+        }
+
         $date = $logDate instanceof CarbonInterface
             ? CarbonImmutable::instance($logDate)->startOfDay()
             : CarbonImmutable::parse($logDate)->startOfDay();
 
         $fuelLogs = $car->fuelLogs()
+            ->whereNotNull('odometer')
             ->when($ignoredFuelLogId !== null, fn ($query) => $query->whereKeyNot($ignoredFuelLogId))
             ->orderBy('log_date')
             ->orderBy('id')

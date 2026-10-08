@@ -493,3 +493,19 @@ test('dashboard fuel quick action defaults odometer from latest known car readin
 
     expect((int) $fuelLog->odometer)->toBe(35225);
 });
+
+test('fuel quick action accepts explicitly missing mileage without replacing the known reading', function () {
+    $user = User::factory()->create();
+    $car = \App\Models\Car::factory()->for($user)->create(['current_odometer' => 12000]);
+    $quickAction = QuickAction::factory()->for($user)->create([
+        'car_id' => $car->id, 'entry_target' => 'fuel_log', 'amount' => 40,
+        'fuel_volume' => 30, 'fuel_full_tank' => true, 'is_active' => true,
+    ]);
+    $this->actingAs($user)->post(route('dashboard.quick-actions.run', $quickAction), ['odometer' => ''])
+        ->assertRedirect(route('dashboard'))->assertSessionHasNoErrors();
+    $fuelLog = $car->fuelLogs()->firstOrFail();
+    expect($fuelLog->odometer)->toBeNull()
+        ->and($fuelLog->calculated_efficiency)->toBeNull()
+        ->and($fuelLog->ledger_entry_id)->not->toBeNull()
+        ->and($car->refresh()->current_odometer)->toBe(12000);
+});

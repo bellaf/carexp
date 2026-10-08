@@ -448,7 +448,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             $odometerToPost = isset($validated['odometer'])
                 ? (int) $validated['odometer']
-                : (int) (app(LatestOdometerResolver::class)->forCar($car) ?? 0);
+                : ($request->exists('odometer') ? null : app(LatestOdometerResolver::class)->forCar($car));
             $fullTankToPost = $request->exists('full_tank')
                 ? $request->boolean('full_tank')
                 : (bool) $quickAction->fuel_full_tank;
@@ -523,47 +523,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ]);
 
                 $fuelLog->update(['ledger_entry_id' => $ledgerEntry->id]);
-                $car->update(['current_odometer' => max((int) ($car->current_odometer ?? 0), $odometerToPost)]);
-
-                $fuelLogs = $user->fuelLogs()
-                    ->where('car_id', $car->id)
-                    ->orderBy('odometer')
-                    ->orderBy('id')
-                    ->get();
-
-                $previousFuelLog = null;
-
-                foreach ($fuelLogs as $currentFuelLog) {
-                    $efficiency = null;
-
-                    if ($currentFuelLog->full_tank && $previousFuelLog !== null && $previousFuelLog->full_tank) {
-                        $distance = (int) $currentFuelLog->odometer - (int) $previousFuelLog->odometer;
-
-                        if ($user->measurement_system === 'metric') {
-                            $volumeForEfficiency = $currentFuelLog->volume_unit === 'litres'
-                                ? (float) $currentFuelLog->volume
-                                : ((float) $currentFuelLog->volume * 4.54609);
-                        } else {
-                            $volumeForEfficiency = $currentFuelLog->volume_unit === 'gallons'
-                                ? (float) $currentFuelLog->volume
-                                : ((float) $currentFuelLog->volume / 4.54609);
-                        }
-
-                        if ($distance > 0 && $volumeForEfficiency > 0) {
-                            $efficiency = round($distance / $volumeForEfficiency, 3);
-                        }
-                    }
-
-                    $currentEfficiency = $currentFuelLog->calculated_efficiency !== null
-                        ? (float) $currentFuelLog->calculated_efficiency
-                        : null;
-
-                    if ($currentEfficiency !== $efficiency) {
-                        $currentFuelLog->update(['calculated_efficiency' => $efficiency]);
-                    }
-
-                    $previousFuelLog = $currentFuelLog;
+                if ($odometerToPost !== null) {
+                    $car->update(['current_odometer' => max((int) ($car->current_odometer ?? 0), $odometerToPost)]);
                 }
+
+                \App\Support\FuelEfficiencyCalculator::recalculate($user->fuelLogs()->where('car_id', $car->id)->get(), $user->measurement_system);
             });
         } else {
             DB::transaction(function () use ($user, $car, $quickAction, $amountToPost): void {

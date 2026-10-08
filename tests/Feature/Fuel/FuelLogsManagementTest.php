@@ -336,7 +336,7 @@ test('car current odometer syncs from most recent fuel log on create update and 
     expect($carA->refresh()->current_odometer)->toBe(12500);
 });
 
-test('efficiency only calculates when current and immediately previous entries are full tank', function () {
+test('efficiency includes partial fills between full tank readings', function () {
     $user = User::factory()->create([
         'measurement_system' => 'imperial',
         'volume_unit' => 'gallons',
@@ -382,7 +382,7 @@ test('efficiency only calculates when current and immediately previous entries a
         ->assertHasNoErrors();
 
     $latestLog = FuelLog::query()->where('user_id', $user->id)->where('odometer', 10200)->firstOrFail();
-    expect($latestLog->calculated_efficiency)->toBeNull();
+    expect((float) $latestLog->calculated_efficiency)->toBe(round(200 / 15, 3));
 
     $middleLog = FuelLog::query()->where('user_id', $user->id)->where('odometer', 10100)->firstOrFail();
 
@@ -441,7 +441,7 @@ test('fuel log page shows weighted average efficiency across full tank intervals
         ->assertDontSee('35.000');
 });
 
-test('fuel logs page orders entries by odometer so displayed efficiency matches the previous row', function () {
+test('fuel logs page orders entries chronologically', function () {
     $user = User::factory()->create([
         'measurement_system' => 'imperial',
         'volume_unit' => 'gallons',
@@ -472,9 +472,57 @@ test('fuel logs page orders entries by odometer so displayed efficiency matches 
         ->get(route('fuel.index'))
         ->assertOk()
         ->assertSeeInOrder([
+            '10,000',
+            'Unavailable',
             '10,200',
             '20.000',
-            '10,000',
-            'N/A',
         ]);
+});
+
+test('missing mileage preserves receipt costs and combines fuel until the next known full tank reading', function () {
+    $user = User::factory()->create(['measurement_system' => 'imperial', 'volume_unit' => 'litres']);
+    $car = Car::factory()->for($user)->create(['current_odometer' => 10000]);
+    $start = FuelLog::factory()->for($car)->create([
+        'log_date' => '2026-01-01', 'odometer' => 10000, 'volume' => 30,
+        'volume_unit' => 'litres', 'full_tank' => true, 'calculated_efficiency' => null,
+    ]);
+    $this->actingAs($user);
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.log_date', '2026-02-01')
+        ->set('form.odometer', '')
+        ->set('form.volume', '40')
+        ->set('form.total_cost', '60')
+        ->set('form.full_tank', true)
+        ->call('saveFuelLog')
+        ->assertHasNoErrors();
+    $missing = $car->fuelLogs()->whereNull('odometer')->firstOrFail();
+    expect($missing->calculated_efficiency)->toBeNull()
+        ->and((float) $missing->ledgerEntry->amount)->toBe(60.0)
+        ->and($car->refresh()->current_odometer)->toBe(10000);
+    Livewire::test('pages::fuel.index')
+        ->call('startCreating')
+        ->set('form.car_id', (string) $car->id)
+        ->set('form.log_date', '2026-03-01')
+        ->set('form.odometer', '10600')
+        ->set('form.volume', '35')
+        ->set('form.total_cost', '52.50')
+        ->set('form.full_tank', true)
+        ->call('saveFuelLog')
+        ->assertHasNoErrors();
+    $end = $car->fuelLogs()->where('odometer', 10600)->firstOrFail();
+    expect((float) $end->calculated_efficiency)->toBe(round(600 / (75 / 4.54609), 3))
+        ->and($end->efficiency_fill_count)->toBe(2);
+    Livewire::test('pages::fuel.index')->set('filterPeriod', 'all_time')
+        ->assertSee('Not recorded')->assertSee('Combined across 2 fill-ups');
+    Livewire::test('pages::fuel.index')->call('editFuelLog', $missing->id)
+        ->set('form.odometer', '10300')->call('saveFuelLog')->assertHasNoErrors();
+    expect((float) $missing->refresh()->calculated_efficiency)->toBe(round(300 / (40 / 4.54609), 3))
+        ->and($end->refresh()->efficiency_fill_count)->toBe(1);
+    Livewire::test('pages::fuel.index')->call('editFuelLog', $missing->id)
+        ->set('form.odometer', '')->call('saveFuelLog')->assertHasNoErrors();
+    $this->artisan('app:recalculate-fuel-efficiencies')->assertSuccessful();
+    expect($missing->refresh()->odometer)->toBeNull()
+        ->and($end->refresh()->efficiency_fill_count)->toBe(2);
 });

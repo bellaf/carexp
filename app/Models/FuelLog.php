@@ -25,6 +25,8 @@ class FuelLog extends Model
         'price_per_unit',
         'full_tank',
         'calculated_efficiency',
+        'efficiency_volume',
+        'efficiency_fill_count',
     ];
 
     /**
@@ -34,6 +36,9 @@ class FuelLog extends Model
     {
         return [
             'log_date' => 'date',
+            'odometer' => 'integer',
+            'efficiency_volume' => 'float',
+            'efficiency_fill_count' => 'integer',
             'volume' => 'decimal:3',
             'price_per_unit' => 'decimal:3',
             'full_tank' => 'boolean',

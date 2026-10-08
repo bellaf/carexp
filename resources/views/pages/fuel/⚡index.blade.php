@@ -103,7 +103,7 @@ new class extends Component {
         $odometerAnalysis = app(OdometerAnomalyDetector::class)->analyze(
             $car,
             (string) $form['log_date'],
-            (int) $form['odometer'],
+            isset($form['odometer']) && $form['odometer'] !== '' ? (int) $form['odometer'] : null,
             $this->editingFuelLogId,
         );
 
@@ -280,7 +280,6 @@ new class extends Component {
             ->with(['car', 'ledgerEntry'])
             ->when($periodStartDate !== null, fn ($query) => $query->whereDate('log_date', '>=', $periodStartDate))
             ->when($periodEndDate !== null, fn ($query) => $query->whereDate('log_date', '<=', $periodEndDate))
-            ->orderByDesc('odometer')
             ->orderByDesc('log_date')
             ->orderByDesc('id')
             ->get();
@@ -315,7 +314,7 @@ new class extends Component {
                 Rule::exists('cars', 'id')->where(fn ($query) => $query->where('user_id', Auth::id())),
             ],
             'form.log_date' => ['required', 'date'],
-            'form.odometer' => ['required', 'integer', 'min:0'],
+            'form.odometer' => ['nullable', 'integer', 'min:0'],
             'form.volume' => ['required', 'numeric', 'min:0.001'],
             'form.total_cost' => ['required', 'numeric', 'min:0.01'],
             'form.price_per_unit' => ['nullable', 'numeric', 'min:0.001'],
@@ -331,7 +330,6 @@ new class extends Component {
         return [
             'form.car_id.required' => 'Please select a car.',
             'form.log_date.required' => 'Date is required.',
-            'form.odometer.required' => 'Odometer is required.',
             'form.volume.required' => 'Volume is required.',
             'form.total_cost.required' => 'Total cost is required.',
         ];
@@ -356,7 +354,7 @@ new class extends Component {
             'attributes' => [
                 'car_id' => (int) $form['car_id'],
                 'log_date' => $form['log_date'],
-                'odometer' => (int) $form['odometer'],
+                'odometer' => isset($form['odometer']) && $form['odometer'] !== '' ? (int) $form['odometer'] : null,
                 'volume' => (float) $form['volume'],
                 'volume_unit' => $volumeUnit,
                 'price_per_unit' => $pricePerUnit,
@@ -369,47 +367,10 @@ new class extends Component {
 
     protected function recalculateFuelEfficienciesForCar(int $carId): void
     {
-        $fuelLogs = Auth::user()->fuelLogs()
-            ->where('car_id', $carId)
-            ->orderBy('odometer')
-            ->orderBy('id')
-            ->get();
-
-        $previousLog = null;
-
-        foreach ($fuelLogs as $fuelLog) {
-            $efficiency = null;
-
-            if ($fuelLog->full_tank && $previousLog !== null && $previousLog->full_tank) {
-                $distance = (int) $fuelLog->odometer - (int) $previousLog->odometer;
-                $volumeForEfficiency = $this->volumeForEfficiency((float) $fuelLog->volume, (string) $fuelLog->volume_unit);
-
-                if ($distance > 0 && $volumeForEfficiency > 0) {
-                    $efficiency = round($distance / $volumeForEfficiency, 3);
-                }
-            }
-
-            $current = $fuelLog->calculated_efficiency !== null ? (float) $fuelLog->calculated_efficiency : null;
-
-            if ($current !== $efficiency) {
-                $fuelLog->update(['calculated_efficiency' => $efficiency]);
-            }
-
-            $previousLog = $fuelLog;
-        }
-    }
-
-    protected function volumeForEfficiency(float $volume, string $volumeUnit): float
-    {
-        if (Auth::user()->measurement_system === 'metric') {
-            return $volumeUnit === 'litres'
-                ? $volume
-                : ($volume * 4.54609);
-        }
-
-        return $volumeUnit === 'gallons'
-            ? $volume
-            : ($volume / 4.54609);
+        FuelEfficiencyCalculator::recalculate(
+            Auth::user()->fuelLogs()->where('car_id', $carId)->get(),
+            (string) Auth::user()->measurement_system,
+        );
     }
 
     protected function syncFuelLedgerEntry(FuelLog $fuelLog, float $amount): void
@@ -460,6 +421,7 @@ new class extends Component {
     {
         $latestOdometer = Auth::user()->fuelLogs()
             ->where('car_id', $carId)
+            ->whereNotNull('odometer')
             ->orderByDesc('log_date')
             ->orderByDesc('id')
             ->value('odometer');
@@ -467,7 +429,7 @@ new class extends Component {
         Auth::user()->cars()
             ->whereKey($carId)
             ->update([
-                'current_odometer' => $latestOdometer !== null ? (int) $latestOdometer : null,
+                'current_odometer' => $latestOdometer !== null ? (int) $latestOdometer : Auth::user()->cars()->whereKey($carId)->value('current_odometer'),
             ]);
     }
 
@@ -560,7 +522,7 @@ new class extends Component {
                     </flux:select>
 
                     <flux:input wire:model="form.log_date" :label="__('Date')" type="date" required />
-                    <flux:input wire:model="form.odometer" :label="__('Odometer')" type="number" min="0" step="1" required />
+                    <flux:input wire:model="form.odometer" :label="__('Odometer (optional)')" :description="__('Leave blank if mileage was not recorded on the receipt.')" type="number" min="0" step="1" />
                     <flux:input wire:model="form.volume" :label="__('Volume') . ' (' . $this->volumeUnitLabel($form['volume_unit']) . ')'" type="number" min="0.001" step="0.001" required />
                     <flux:input wire:model="form.total_cost" :label="__('Total Cost') . ' (' . $this->currencySymbol() . ')'" type="number" min="0.01" step="0.01" required />
                     <flux:input wire:model="form.price_per_unit" :label="__('Price Per Unit (optional)') . ' (' . $this->currencySymbol() . '/' . $this->volumeUnitLabel($form['volume_unit']) . ')'" type="number" min="0.001" step="0.001" />
@@ -642,7 +604,7 @@ new class extends Component {
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <div class="font-medium">{{ $fuelLog->log_date->format('d-m-Y') }}</div>
-                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Odometer') }}: {{ number_format((float) $fuelLog->odometer) }}</div>
+                            <div class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Odometer') }}: {{ ($fuelLog->odometer !== null ? number_format($fuelLog->odometer) : __('Not recorded')) }}</div>
                         </div>
                         <div class="text-right">
                             <div class="font-semibold">{{ $this->formatCurrency($fuelLog->ledgerEntry?->amount) }}</div>
@@ -664,7 +626,10 @@ new class extends Component {
                         </div>
                         <div class="col-span-2">
                             <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Efficiency (mpg)') }}</dt>
-                            <dd>{{ $fuelLog->calculated_efficiency !== null ? number_format((float) $fuelLog->calculated_efficiency, 3) : __('N/A') }}</dd>
+                            <dd>{{ $fuelLog->calculated_efficiency !== null ? number_format((float) $fuelLog->calculated_efficiency, 3) : __('Unavailable') }}
+                                @if ($fuelLog->efficiency_fill_count > 1)
+                                    <flux:text>{{ __('Combined across :count fill-ups', ['count' => $fuelLog->efficiency_fill_count]) }}</flux:text>
+                                @endif</dd>
                         </div>
                     </dl>
                 </button>
@@ -692,7 +657,7 @@ new class extends Component {
                             wire:key="fuel-row-{{ $fuelLog->id }}"
                         >
                             <td class="px-3 py-2">{{ $fuelLog->log_date->format('d-m-Y') }}</td>
-                            <td class="px-3 py-2">{{ number_format((float) $fuelLog->odometer) }}</td>
+                            <td class="px-3 py-2">{{ ($fuelLog->odometer !== null ? number_format($fuelLog->odometer) : __('Not recorded')) }}</td>
                             <td class="px-3 py-2">{{ number_format((float) $fuelLog->volume, 3) }} {{ $this->volumeUnitLabel($fuelLog->volume_unit) }}</td>
                             <td class="px-3 py-2">
                                 @if ($fuelLog->full_tank)
@@ -703,7 +668,10 @@ new class extends Component {
                             </td>
                             <td class="px-3 py-2">{{ $this->currencySymbol() }}{{ number_format((float) $fuelLog->price_per_unit, 3) }}/{{ $this->volumeUnitLabel($fuelLog->volume_unit) }}</td>
                             <td class="px-3 py-2">
-                                {{ $fuelLog->calculated_efficiency !== null ? number_format((float) $fuelLog->calculated_efficiency, 3) : __('N/A') }}
+                                {{ $fuelLog->calculated_efficiency !== null ? number_format((float) $fuelLog->calculated_efficiency, 3) : __('Unavailable') }}
+                                @if ($fuelLog->efficiency_fill_count > 1)
+                                    <flux:text>{{ __('Combined across :count fill-ups', ['count' => $fuelLog->efficiency_fill_count]) }}</flux:text>
+                                @endif
                             </td>
                             <td class="px-3 py-2 text-right">{{ $this->formatCurrency($fuelLog->ledgerEntry?->amount) }}</td>
                         </tr>

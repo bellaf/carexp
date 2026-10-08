@@ -564,13 +564,12 @@
                             </div>
                             <div x-show="selectedQuickAction?.entry_target === 'fuel_log'" x-cloak>
                                 <flux:input
-                                    :label="__('Odometer')"
+                                    :label="__('Odometer (optional)')"
                                     type="number"
                                     name="odometer"
                                     min="0"
                                     step="1"
                                     x-model="selectedQuickAction.odometer_input"
-                                    required
                                 />
                             </div>
                             <div x-show="selectedQuickAction?.requires_amount" x-cloak>

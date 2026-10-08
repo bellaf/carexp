@@ -29,8 +29,8 @@ test('command imports fuel logs from csv and creates linked ledger entries', fun
         '--date-format' => 'd/m/Y',
     ])->assertSuccessful();
 
-    $this->assertDatabaseCount('fuel_logs', 2);
-    $this->assertDatabaseCount('ledger_entries', 2);
+    $this->assertDatabaseCount('fuel_logs', 3);
+    $this->assertDatabaseCount('ledger_entries', 3);
     $this->assertDatabaseHas('fuel_logs', [
         'user_id' => $user->id,
         'car_id' => $car->id,
@@ -46,6 +46,9 @@ test('command imports fuel logs from csv and creates linked ledger entries', fun
     ]);
 
     expect($car->refresh()->current_odometer)->toBe(26540);
+    $missing = $car->fuelLogs()->whereNull('odometer')->firstOrFail();
+    expect($missing->calculated_efficiency)->toBeNull()
+        ->and((float) $missing->ledgerEntry->amount)->toBe(36.44);
 
     unlink($csvPath);
 });

@@ -18,7 +18,7 @@ class FuelEfficiencyCalculator
                     return;
                 }
 
-                $volume = self::volumeForMeasurementSystem((float) $fuelLog->volume, (string) $fuelLog->volume_unit, $measurementSystem);
+                $volume = $fuelLog->efficiency_volume ?? self::volumeForMeasurementSystem((float) $fuelLog->volume, (string) $fuelLog->volume_unit, $measurementSystem);
 
                 if ($volume <= 0) {
                     return;
@@ -33,6 +33,50 @@ class FuelEfficiencyCalculator
         }
 
         return round($weightedEfficiencyTotal / $totalVolume, 3);
+    }
+
+    public static function recalculate(Collection $fuelLogs, string $measurementSystem): int
+    {
+        $anchor = null;
+        $volume = 0.0;
+        $fillCount = 0;
+        $updatedCount = 0;
+
+        foreach ($fuelLogs->sortBy([['log_date', 'asc'], ['id', 'asc']]) as $fuelLog) {
+            $efficiency = null;
+            $intervalVolume = null;
+            $intervalFillCount = null;
+
+            if ($anchor !== null) {
+                $volume += self::volumeForMeasurementSystem((float) $fuelLog->volume, (string) $fuelLog->volume_unit, $measurementSystem);
+                $fillCount++;
+            }
+
+            if ($fuelLog->full_tank && $fuelLog->odometer !== null) {
+                if ($anchor !== null && $fuelLog->odometer > $anchor->odometer && $volume > 0) {
+                    $efficiency = round(($fuelLog->odometer - $anchor->odometer) / $volume, 3);
+                    $intervalVolume = round($volume, 6);
+                    $intervalFillCount = $fillCount;
+                }
+
+                $anchor = $fuelLog;
+                $volume = 0.0;
+                $fillCount = 0;
+            }
+
+            $fuelLog->fill([
+                'calculated_efficiency' => $efficiency,
+                'efficiency_volume' => $intervalVolume,
+                'efficiency_fill_count' => $intervalFillCount,
+            ]);
+
+            if ($fuelLog->isDirty()) {
+                $fuelLog->save();
+                $updatedCount++;
+            }
+        }
+
+        return $updatedCount;
     }
 
     private static function volumeForMeasurementSystem(float $volume, string $volumeUnit, string $measurementSystem): float
