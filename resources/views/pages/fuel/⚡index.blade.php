@@ -511,7 +511,7 @@ new class extends Component {
             </div>
 
             <form wire:submit="saveFuelLog" class="space-y-5">
-                <div class="grid gap-4 md:grid-cols-2">
+                <div class="grid items-start gap-4 md:grid-cols-2">
                     <flux:select wire:model="form.car_id" :label="__('Car')" required>
                         <flux:select.option value="">{{ __('Select car') }}</flux:select.option>
                         @foreach ($this->cars as $car)

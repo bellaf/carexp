@@ -537,6 +537,8 @@ test('fuel form places mileage explanation below the odometer input', function (
     $descriptionPosition = strpos($html, 'Leave blank if mileage was not recorded on the receipt.');
     $volumePosition = strpos($html, 'wire:model="form.volume"');
 
+    expect($html)->toContain('grid items-start gap-4 md:grid-cols-2');
+
     expect($odometerPosition)->not->toBeFalse()
         ->and($descriptionPosition)->not->toBeFalse()
         ->and($volumePosition)->not->toBeFalse()
